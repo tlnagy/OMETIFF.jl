@@ -18,8 +18,8 @@ function loadtiff(filename::String)
 
         present_dims = find(metadata.dims .> 1)
         order_dims = present_dims[3:end]
-        data = Array{metadata.datatype, length(present_dims)}(metadata.dims[present_dims]...)
-        tmp = Array{metadata.datatype}(metadata.dims[1:2]...)
+        data = Array{metadata.rawtype, length(present_dims)}(metadata.dims[present_dims]...)
+        tmp = Array{metadata.rawtype}(metadata.dims[1:2]...)
         for i in 1:size(metadata.order, 2)
             seek(io, data_offsets[i])
             read!(io, tmp)
@@ -27,7 +27,7 @@ function loadtiff(filename::String)
             data[:, :, metadata.order[order_dims-2, i]...] = tmp
         end
 
-        AxisArray(Gray.(reinterpret(N0f16, data)), metadata.axes[[present_dims...]]...)
+        AxisArray(Gray.(reinterpret(metadata.mappedtype, data)), metadata.axes[[present_dims...]]...)
     end
 end
 
