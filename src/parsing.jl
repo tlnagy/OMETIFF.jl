@@ -42,6 +42,9 @@ function build_axes(image::EzXML.Node)
 
     # extract channel names
     channel_names = content.(find(image, "ns:Channel/@Name", ["ns"=>namespace(image)]))
+    if isempty(channel_names)
+        channel_names = ["C$x" for x in 1:dims[4]]
+    end
 
     time_axis = Axis{:time}(1:dims[5])
     try # attempt to build a more specific time axis
