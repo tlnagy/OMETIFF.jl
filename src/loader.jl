@@ -1,15 +1,16 @@
 function loadtiff(filename::String)
     open(filename) do io
-        check_header(io)
+        need_bswap = check_header(io)
 
-        first_ifd = Int(read(io, UInt32))
+        first_ifd = read(io, UInt32)
+        first_ifd = need_bswap ? Int(bswap(first_ifd)) : Int(first_ifd)
 
         data_offsets = Int[]
-        next_ifd, strip_offset, omexml = read_ifd(io, first_ifd)
+        next_ifd, strip_offset, omexml = read_ifd(io, first_ifd, need_bswap)
         push!(data_offsets, strip_offset)
 
         while next_ifd > 0
-            next_ifd, strip_offset, _ = read_ifd(io, next_ifd)
+            next_ifd, strip_offset, _ = read_ifd(io, next_ifd, need_bswap)
             push!(data_offsets, strip_offset)
         end
 
@@ -22,6 +23,7 @@ function loadtiff(filename::String)
         for i in 1:size(metadata.order, 2)
             seek(io, data_offsets[i])
             read!(io, tmp)
+            tmp = need_bswap ? bswap.(tmp) : tmp
             data[:, :, metadata.order[order_dims-2, i]...] = tmp
         end
 
@@ -33,36 +35,40 @@ end
 """
     check_header(io::IOStream)
 
-Check header of file for the standard TIFF magic bytes, returns true if found
+Check header of file for the standard TIFF magic bytes, returns whether the
+byte order needs to swapped
 """
 function check_header(io::IOStream)
     seekstart(io)
 
     endianness = read(io, UInt16)
-    # check if a little-endian tiff file
-    endianness != 0x4949 && error("Big-endian files aren't supported yet. Please file an issue.")
 
-    tiff_version = read(io, UInt16)
-    tiff_version != 0x2a && error("Big-TIFF files aren't supported yet")
+    # check if we need to swap byte order
+    need_bswap = endianness != myendian()
 
-    return true
+    tiff_version = read(io, UInt8, 2)
+    (tiff_version != [0x2a, 0x00] && tiff_version != [0x00, 0x2a]) && error("Big-TIFF files aren't supported yet")
+
+    return need_bswap
 end
 
 
-function read_ifd(io::IOStream, offset::Integer)
+function read_ifd(io::IOStream, offset::Integer, need_bswap::Bool)
     seek(io, offset)
 
-    number_of_entries = Int(read(io, UInt16))
+    number_of_entries = read(io, UInt16)
+    number_of_entries = need_bswap ? Int(bswap(number_of_entries)) : Int(number_of_entries)
 
     strip_offset = 0
     height = 0
     rawxml = ""
 
     for i in 1:number_of_entries
-        tag_id = Int(read(io, UInt16))
-        tag_type = Int(read(io, UInt16))
-        data_count = Int(read(io, UInt32))
-        data_offset = Int(read(io, UInt32))
+        tag_bytes = Unsigned[]
+        append!(tag_bytes, read(io, UInt16, 2))
+        append!(tag_bytes, read(io, UInt32, 2))
+        tag_bytes = need_bswap ? bswap.(tag_bytes) : tag_bytes
+        tag_id, tag_type, data_count, data_offset = Int.(tag_bytes)
 
         curr_pos = position(io)
 
@@ -89,5 +95,7 @@ function read_ifd(io::IOStream, offset::Integer)
         seek(io, curr_pos)
     end
 
-    Int(read(io, UInt32)), strip_offset, rawxml
+    next_ifd = read(io, UInt32)
+    next_ifd = need_bswap ? bswap(next_ifd) : next_ifd
+    Int(next_ifd), strip_offset, rawxml
 end
