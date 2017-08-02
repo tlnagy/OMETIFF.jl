@@ -37,7 +37,7 @@ Returns an array of ints with dimension sizes and an array of `AxisArrays.Axis`
 objects both in XYZCT order given the Pixels node of the OME-XML document
 """
 function build_axes(image::EzXML.Node)
-    dim_names = ["SizeX", "SizeY", "SizeZ", "SizeC", "SizeT"]
+    dim_names = ["SizeY", "SizeX", "SizeZ", "SizeC", "SizeT"]
     dims = map(x->parse(Int, image[x]), dim_names)
 
     # extract channel names

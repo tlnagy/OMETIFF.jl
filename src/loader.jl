@@ -5,7 +5,7 @@ function loadtiff(filename::String)
         first_ifd = read(io, UInt32)
         first_ifd = need_bswap ? Int(bswap(first_ifd)) : Int(first_ifd)
 
-        data_offsets = Int[]
+        data_offsets = Array{Int}[]
         next_ifd, strip_offset, omexml = read_ifd(io, first_ifd, need_bswap)
         push!(data_offsets, strip_offset)
 
@@ -18,13 +18,25 @@ function loadtiff(filename::String)
 
         present_dims = find(metadata.dims .> 1)
         order_dims = present_dims[3:end]
-        data = Array{metadata.rawtype, length(present_dims)}(metadata.dims[present_dims]...)
-        tmp = Array{metadata.rawtype}(metadata.dims[1:2]...)
+        height, width = metadata.dims[1:2]
+        data = Array{metadata.rawtype, length(present_dims)}(height, width, metadata.dims[order_dims]...)
         for i in 1:size(metadata.order, 2)
-            seek(io, data_offsets[i])
-            read!(io, tmp)
-            tmp = need_bswap ? bswap.(tmp) : tmp
-            data[:, :, metadata.order[order_dims-2, i]...] = tmp
+            strip_offsets = data_offsets[i]
+
+            n_strips = length(strip_offsets)
+            strip_len = floor(Int, (width * height) / n_strips)
+            dims = n_strips > 1 ? (strip_len) : (height, width)
+            tmp = Array{metadata.rawtype}(dims...)
+            for j in 1:n_strips
+                seek(io, strip_offsets[j])
+                read!(io, tmp)
+                tmp = need_bswap ? bswap.(tmp) : tmp
+                if n_strips > 1
+                    data[j, :, metadata.order[order_dims-2, i]...] = tmp
+                else
+                    data[:, :, metadata.order[order_dims-2, i]...] = tmp
+                end
+            end
         end
 
         AxisArray(Gray.(reinterpret(metadata.mappedtype, data)), metadata.axes[[present_dims...]]...)
@@ -59,7 +71,10 @@ function read_ifd(io::IOStream, offset::Integer, need_bswap::Bool)
     number_of_entries = read(io, UInt16)
     number_of_entries = need_bswap ? Int(bswap(number_of_entries)) : Int(number_of_entries)
 
+    strip_offset_list = []
     strip_offset = 0
+    strip_count = 0
+    width = 0
     height = 0
     rawxml = ""
 
@@ -71,18 +86,30 @@ function read_ifd(io::IOStream, offset::Integer, need_bswap::Bool)
         tag_id, tag_type, data_count, data_offset = Int.(tag_bytes)
 
         curr_pos = position(io)
-
-        if tag_id == 257 # height of image
+        if tag_id == 256
+            width = data_offset
+        elseif tag_id == 257 # height of image
             height = data_offset
-        end
-        if tag_id == 273 # offset in stream to first strip
+        elseif tag_id == 273 # offset in stream to first strip
             strip_offset = data_offset
-        end
+            strip_count = data_count
         # number of rows per strip should be equal to the height of image for now
-        if tag_id == 278
-            (data_offset != height) && error("Multiple strips aren't supported yet. Please file an issue")
-        end
-        if tag_id == 270 # Image Description tag
+        elseif tag_id == 278
+            rows_per_strip = data_offset
+            strip_num = floor(Int, (height + rows_per_strip - 1) / rows_per_strip)
+
+            # if the data is spread across multiple strips
+            if strip_num > 1
+                seek(io, strip_offset)
+                strip_offsets = read(io, UInt32, strip_num)
+                strip_offsets = need_bswap ? bswap.(strip_offsets) : strip_offsets
+                append!(strip_offset_list, Int.(strip_offsets))
+            else
+                push!(strip_offset_list, strip_offset)
+            end
+        elseif tag_id == 279 # Strip byte counts
+            # println("-- $data_offset")
+        elseif tag_id == 270 # Image Description tag
             seek(io, data_offset)
             # strip null values from string
             raw_str = replace(String(read(io, UInt8, data_count)), "\0", "")
@@ -97,5 +124,5 @@ function read_ifd(io::IOStream, offset::Integer, need_bswap::Bool)
 
     next_ifd = read(io, UInt32)
     next_ifd = need_bswap ? bswap(next_ifd) : next_ifd
-    Int(next_ifd), strip_offset, rawxml
+    Int(next_ifd), strip_offset_list, rawxml
 end
