@@ -1,4 +1,6 @@
 """
+    to_symbol(input::String)
+
 Cleans up `input` string and converts it into a symbol
 """
 function to_symbol(input::String)
@@ -7,6 +9,12 @@ function to_symbol(input::String)
     Symbol(replace(fixed, r"^[\d]", s"_\g<0>"))
 end
 
+
+"""
+    myendian()
+
+Returns the TIFF endian byte order expected if its endianness matches the host's
+"""
 function myendian()
     if ENDIAN_BOM == 0x04030201
         return 0x4949
