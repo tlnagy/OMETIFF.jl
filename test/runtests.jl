@@ -1,5 +1,4 @@
 using OMETIFF
-using Images
 using AxisArrays
 using Base.Test
 
