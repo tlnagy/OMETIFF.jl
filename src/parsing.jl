@@ -20,11 +20,14 @@ number of IFDs in the TIFF file. Take the root node of the ome-xml file.
 function get_ifd_order(omexml::EzXML.Node)
     ifds = find(omexml, "/ns:OME/ns:Image//ns:TiffData", ["ns"=>namespace(omexml)])
     ifd_dims = Array{Int}(3, length(ifds))
+    prev_idx = -1
     for node in ifds
         idx = parse(Int, node["IFD"])+1
+        (idx <= prev_idx) && error("Multifile OME TIFFs not yet supported")
         ifd_dims[1, idx] = parse(Int, node["FirstZ"])+1
         ifd_dims[2, idx] = parse(Int, node["FirstC"])+1
         ifd_dims[3, idx] = parse(Int, node["FirstT"])+1
+        prev_idx = idx
     end
     ifd_dims
 end
