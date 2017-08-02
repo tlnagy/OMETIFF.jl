@@ -22,6 +22,7 @@ struct Metadata
 end
 
 type_mapping = Dict(
+    "uint8" => (UInt8, N0f8),
     "uint16" => (UInt16, N0f16),
     "uint32" => (UInt32, N0f32),
     "float" => (Float32, Float32),
