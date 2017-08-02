@@ -1,8 +1,9 @@
 module OMETIFF
 
 using Unitful
-using Images
 using AxisArrays
+using FixedPointNumbers
+using Colors
 using EzXML
 
 export loadtiff

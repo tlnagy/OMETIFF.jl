@@ -1,5 +1,6 @@
 julia 0.6
 EzXML 0.4.4
 Unitful
-Images
+FixedPointNumbers
+Colors
 AxisArrays
