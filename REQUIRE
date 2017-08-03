@@ -1,5 +1,5 @@
 julia 0.6
-EzXML 0.4.4
+EzXML 0.4.2
 Unitful
 FixedPointNumbers
 Colors
