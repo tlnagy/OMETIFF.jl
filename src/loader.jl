@@ -1,60 +1,65 @@
-function loadtiff(filename::String)
-    open(filename) do io
-        need_bswap = check_header(io)
+function load(f::File{format"TIFF"})
+    open(f) do s
+        ret = load(s)
+    end
+end
 
-        first_ifd = read(io, UInt32)
-        first_ifd = need_bswap ? Int(bswap(first_ifd)) : Int(first_ifd)
+function load(io::Stream{format"TIFF"})
+    if !contains(get(io.filename), ".ome.tif") && !contains(get(io.filename), ".ome.tiff")
+        throw(FileIO.LoaderError("Not an OME TIFF file!"))
+    end
 
-        data_offsets = Array{Int}[]
-        next_ifd, strip_offset, omexml = read_ifd(io, first_ifd, need_bswap)
+    need_bswap = check_bswap(io)
+
+    first_ifd = read(io, UInt32)
+    first_ifd = need_bswap ? Int(bswap(first_ifd)) : Int(first_ifd)
+
+    data_offsets = Array{Int}[]
+    next_ifd, strip_offset, omexml = read_ifd(io, first_ifd, need_bswap)
+    push!(data_offsets, strip_offset)
+
+    while next_ifd > 0
+        next_ifd, strip_offset, _ = read_ifd(io, next_ifd, need_bswap)
         push!(data_offsets, strip_offset)
+    end
 
-        while next_ifd > 0
-            next_ifd, strip_offset, _ = read_ifd(io, next_ifd, need_bswap)
-            push!(data_offsets, strip_offset)
-        end
+    metadata = parse_metadata(omexml)
 
-        metadata = parse_metadata(omexml)
+    present_dims = find(metadata.dims .> 1)
+    order_dims = present_dims[3:end]
+    height, width = metadata.dims[1:2]
+    data = Array{metadata.rawtype, length(present_dims)}(height, width, metadata.dims[order_dims]...)
+    for i in 1:size(metadata.order, 2)
+        strip_offsets = data_offsets[i]
 
-        present_dims = find(metadata.dims .> 1)
-        order_dims = present_dims[3:end]
-        height, width = metadata.dims[1:2]
-        data = Array{metadata.rawtype, length(present_dims)}(height, width, metadata.dims[order_dims]...)
-        for i in 1:size(metadata.order, 2)
-            strip_offsets = data_offsets[i]
-
-            n_strips = length(strip_offsets)
-            strip_len = floor(Int, (width * height) / n_strips)
-            dims = n_strips > 1 ? (strip_len) : (height, width)
-            tmp = Array{metadata.rawtype}(dims...)
-            for j in 1:n_strips
-                seek(io, strip_offsets[j])
-                read!(io, tmp)
-                tmp = need_bswap ? bswap.(tmp) : tmp
-                if n_strips > 1
-                    data[j, :, metadata.order[order_dims-2, i]...] = tmp
-                else
-                    data[:, :, metadata.order[order_dims-2, i]...] = tmp
-                end
+        n_strips = length(strip_offsets)
+        strip_len = floor(Int, (width * height) / n_strips)
+        dims = n_strips > 1 ? (strip_len) : (height, width)
+        tmp = Array{metadata.rawtype}(dims...)
+        for j in 1:n_strips
+            seek(io, strip_offsets[j])
+            read!(io, tmp)
+            tmp = need_bswap ? bswap.(tmp) : tmp
+            if n_strips > 1
+                data[j, :, metadata.order[order_dims-2, i]...] = tmp
+            else
+                data[:, :, metadata.order[order_dims-2, i]...] = tmp
             end
         end
-
-        AxisArray(Gray.(reinterpret(metadata.mappedtype, data)), metadata.axes[[present_dims...]]...)
     end
+
+    AxisArray(Gray.(reinterpret(metadata.mappedtype, data)), metadata.axes[[present_dims...]]...)
 end
 
 
 """
-    check_header(io::IOStream)
+    check_bswap(io::Stream)
 
-Check header of file for the standard TIFF magic bytes, returns whether the
-byte order needs to swapped
+Check endianness of TIFF file to see if we need to swap bytes
 """
-function check_header(io::IOStream)
+function check_bswap(io::Stream)
     seekstart(io)
-
     endianness = read(io, UInt16)
-
     # check if we need to swap byte order
     need_bswap = endianness != myendian()
 
@@ -65,7 +70,7 @@ function check_header(io::IOStream)
 end
 
 
-function read_ifd(io::IOStream, offset::Integer, need_bswap::Bool)
+function read_ifd(io::Stream, offset::Integer, need_bswap::Bool)
     seek(io, offset)
 
     number_of_entries = read(io, UInt16)

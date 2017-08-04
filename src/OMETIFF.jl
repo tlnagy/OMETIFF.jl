@@ -5,8 +5,7 @@ using AxisArrays
 using FixedPointNumbers
 using Colors
 using EzXML
-
-export loadtiff
+using FileIO
 
 include("types.jl")
 include("utils.jl")
