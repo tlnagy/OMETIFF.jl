@@ -56,7 +56,7 @@ function build_axes(image::EzXML.Node)
         # attempt to map the time units
         unittype = getfield(Unitful, Symbol(image["TimeIncrementUnit"]))
 
-        time_axis = Axis{:time}((0:increment:increment*(dims[5]-1))*unittype)
+        time_axis = Axis{:time}(Unitful.upreferred.((0:increment:increment*(dims[5]-1))*unittype))
     end
 
     axes = [
