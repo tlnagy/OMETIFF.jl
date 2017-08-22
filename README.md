@@ -12,8 +12,8 @@ labeled axes provided by [AxisArrays.jl](https://github.com/JuliaImages/AxisArra
 ## Usage
 
 ```julia
-using OMETIFF
-img = loadtiff("path/to/ome.tif")
+using FileIO
+img = load("path/to/ome.tif") # FileIO will install OME-TIFF upon running this command
 println(axisnames(img))
 println(axisvalues(img))
 ```
