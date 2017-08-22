@@ -1,5 +1,7 @@
 module OMETIFF
 
+__precompile__()
+
 using Unitful
 using AxisArrays
 using FixedPointNumbers
