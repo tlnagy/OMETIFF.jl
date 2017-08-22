@@ -2,7 +2,9 @@ function parse_metadata(rawxml::String)
     xdoc = parsexml(rawxml)
     omexml = root(xdoc)
 
-    image = findfirst(omexml, "/ns:OME//*[@SizeX]",["ns"=>namespace(omexml)])
+    images = find(omexml, "/ns:OME//*[@SizeX]",["ns"=>namespace(omexml)])
+    (length(images) != 1) && error("Only a single image block per file supported at this time")
+    image = images[1]
     dims, axes = build_axes(image)
 
     order = get_ifd_order(omexml)
