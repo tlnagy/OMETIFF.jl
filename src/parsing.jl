@@ -1,37 +1,61 @@
-function parse_metadata(rawxml::String)
-    xdoc = parsexml(rawxml)
-    omexml = root(xdoc)
+"""
+An ImageSlice struct contains all the information from a TiffData element in
+the OME-XML.
+"""
+struct ImageSlice
+    """A pointer to the file containing this slice"""
+    file::TiffFile
 
-    images = find(omexml, "/ns:OME//*[@SizeX]",["ns"=>namespace(omexml)])
-    (length(images) != 1) && error("Only a single image block per file supported at this time")
-    image = images[1]
-    dims, axes = build_axes(image)
+    """The IFD this slice corresponds to in the file"""
+    ifd_idx::Int
 
-    order = get_ifd_order(omexml)
+    """The index of this slice in the Z stack"""
+    z_idx::Int
 
-    Metadata(dims, axes, order, image["Type"])
+    """The index of this slice in the time dimension"""
+    t_idx::Int
+
+    """The index of this slice in the channel dimension"""
+    c_idx::Int
+
+    """
+    The number of ifds that slice applies to. The information within this object
+    will be mapped to IFDs from `ifd_idx` to `ifd_idx`+`num_ifds`-1.
+    """
+    num_ifds::Int
 end
 
 
-"""
-    get_ifd_order(omexml::EzXML.Node)
 
-Constructs a 3xN array of the Z, C, T indices of each IFD, where N is the
-number of IFDs in the TIFF file. Take the root node of the ome-xml file.
 """
-function get_ifd_order(omexml::EzXML.Node)
-    ifds = find(omexml, "/ns:OME/ns:Image//ns:TiffData", ["ns"=>namespace(omexml)])
-    ifd_dims = Array{Int}(3, length(ifds))
-    prev_idx = -1
-    for node in ifds
-        idx = parse(Int, node["IFD"])+1
-        (idx <= prev_idx) && error("Multifile OME TIFFs not yet supported")
-        ifd_dims[1, idx] = parse(Int, node["FirstZ"])+1
-        ifd_dims[2, idx] = parse(Int, node["FirstC"])+1
-        ifd_dims[3, idx] = parse(Int, node["FirstT"])+1
-        prev_idx = idx
+    read_tiffdata(tiffdata::EzXML.Node, files::Dict{String, TiffFile}, orig_file::TiffFile)
+
+Reads a Tiff Data entry and generates an ImageSlice object from it. Keeps track of all relevant
+files.
+"""
+function read_tiffdata(tiffdata::EzXML.Node, files::Dict{String, TiffFile}, orig_file::TiffFile)
+    ifd = parse(Int, tiffdata["IFD"])+1
+    z = parse(Int, tiffdata["FirstZ"])+1
+    t = parse(Int, tiffdata["FirstT"])+1
+    c = parse(Int, tiffdata["FirstC"])+1
+    p = parse(Int, tiffdata["PlaneCount"])
+
+    uuid_node = findfirst(tiffdata, "./ns:UUID", ["ns"=>namespace(tiffdata)])
+    uuid = nodecontent(uuid_node)
+    filepath = joinpath(dirname(orig_file.filepath), uuid_node["FileName"])
+
+    # if this file has already been encounter than just find the reference
+    if haskey(files, filepath)
+        file_ptr = files[filepath]
+    elseif filepath == orig_file.filepath
+        file_ptr = orig_file
+        files[orig_file.filepath] = orig_file
+    else
+        file_ptr = TiffFile(uuid, filepath)
+        files[filepath] = file_ptr
     end
-    ifd_dims
+
+    ImageSlice(file_ptr, ifd, z, t, c, p)
 end
 
 
@@ -46,7 +70,7 @@ function build_axes(image::EzXML.Node)
     dims = map(x->parse(Int, image[x]), dim_names)
 
     # extract channel names
-    channel_names = content.(find(image, "ns:Channel/@Name", ["ns"=>namespace(image)]))
+    channel_names = nodecontent.(find(image, "ns:Channel/@Name", ["ns"=>namespace(image)]))
     if isempty(channel_names)
         channel_names = ["C$x" for x in 1:dims[4]]
     end

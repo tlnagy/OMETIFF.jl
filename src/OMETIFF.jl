@@ -8,9 +8,10 @@ using FixedPointNumbers
 using Colors
 using EzXML
 using FileIO
+using DataStructures
 
-include("types.jl")
 include("utils.jl")
+include("files.jl")
 include("parsing.jl")
 include("loader.jl")
 
