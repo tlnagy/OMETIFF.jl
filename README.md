@@ -22,6 +22,7 @@ Pkg.add("OMETIFF")
 ## Usage
 
 ```julia
+Pkg.checkout("FileIO") # we need the bleeding edge version of FileIO.jl for now
 using FileIO
 img = load("path/to/ome.tif") # FileIO will install OME-TIFF upon running this command
 println(axisnames(img))
