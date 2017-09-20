@@ -79,7 +79,7 @@ end
     for filepath in files
         # open file using OMETIFF.jl
         ome = open(filepath) do f
-            FileIO.load(Stream(format"OMETIFF", f, OMETIFF.extract_filename(f)))
+            OMETIFF.load(Stream(format"OMETIFF", f, OMETIFF.extract_filename(f)))
         end
         # open file using standard TIFF parser
         tiff = open(filepath) do f
