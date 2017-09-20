@@ -70,3 +70,22 @@ end
         end
     end
 end
+# let's make sure that the values we return are identical to normal TIFF readers
+@testset "TIFF value verifications" begin
+    files = [
+        "testdata/singles/170918_tn_neutrophil_migration_wave.ome.tif",
+        "testdata/singles/single-channel.ome.tif"
+    ]
+    for filepath in files
+        # open file using OMETIFF.jl
+        ome = open(filepath) do f
+            FileIO.load(Stream(format"OMETIFF", f, OMETIFF.extract_filename(f)))
+        end
+        # open file using standard TIFF parser
+        tiff = open(filepath) do f
+            FileIO.load(Stream(format"TIFF", f, OMETIFF.extract_filename(f)))
+        end
+        # compare
+        @test all(ome.data .== tiff)
+    end
+end
