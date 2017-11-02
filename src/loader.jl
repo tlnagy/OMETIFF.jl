@@ -6,7 +6,7 @@ end
 
 function load(io::Stream{format"OMETIFF"})
     if !contains(get(io.filename), ".ome.tif") && !contains(get(io.filename), ".ome.tiff")
-        throw(FileIO.LoaderError("Not an OME TIFF file!"))
+        throw(FileIO.LoaderError("OMETIFF", "Not an OME TIFF file!"))
     end
 
     orig_file = TiffFile(io)
