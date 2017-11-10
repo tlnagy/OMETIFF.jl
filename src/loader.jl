@@ -40,7 +40,7 @@ function load(io::Stream{format"OMETIFF"})
 
         for (filepath, ifds) in slices
             file = files[filepath]
-            for i in 1:length(ifds)
+            for i in sort(collect(keys(ifds)))
                 ifd = ifds[i]
                 strip_offsets = next(file)
 
