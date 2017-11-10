@@ -9,6 +9,7 @@ using Colors
 using EzXML
 using FileIO
 using DataStructures
+using Images
 
 include("utils.jl")
 include("files.jl")
