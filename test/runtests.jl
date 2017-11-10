@@ -42,6 +42,15 @@ using Base.Test
             @test size(img[Axis{:z}(1)]) == (167, 439, 3)
         end
     end
+    @testset "Multi position OME-TIFF" begin
+        open("testdata/singles/background_1_MMStack.ome.tif") do f
+            s = Stream(format"OMETIFF", f, OMETIFF.extract_filename(f))
+            img = OMETIFF.load(s)
+            @test size(img) == (1024, 1024, 9)
+            # check position indexing
+            @test size(img[Axis{:position}(:Pos1)]) == (1024, 1024)
+        end
+    end
 end
 @testset "Multi file OME-TIFFs" begin
     @testset "Multi file Z stack with master file" begin
