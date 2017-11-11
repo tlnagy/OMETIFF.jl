@@ -20,8 +20,7 @@ mutable struct TiffFile
         # TODO: Parsing the filename from the IO name is likely to be fragile
         file.filepath = extract_filename(io)
         file.need_bswap = check_bswap(io)
-        first_ifd = read(file.io, UInt32)
-        first_ifd = file.need_bswap ? Int(bswap(first_ifd)) : Int(first_ifd)
+        first_ifd = do_bswap(file, read(file.io, UInt32))
         file.offsets = [first_ifd]
         file
     end
@@ -43,16 +42,14 @@ Extract the OME-XML embedded in the TiffFile `file`.
 function loadxml(file::TiffFile)
     # ome-xml is stored in the first offset
     seek(file.io, file.offsets[1])
-    number_of_entries = read(file.io, UInt16)
-    number_of_entries = file.need_bswap ? Int(bswap(number_of_entries)) : Int(number_of_entries)
+    number_of_entries = do_bswap(file, read(file.io, UInt16))
     rawxml = ""
 
     for i in 1:number_of_entries
         tag_bytes = Unsigned[]
         append!(tag_bytes, read(file.io, UInt16, 2))
         append!(tag_bytes, read(file.io, UInt32, 2))
-        tag_bytes = file.need_bswap ? bswap.(tag_bytes) : tag_bytes
-        tag_id, tag_type, data_count, data_offset = Int.(tag_bytes)
+        tag_id, tag_type, data_count, data_offset = Int.(do_bswap(file, tag_bytes))
 
         if tag_id == 270 # Image Description tag
             seek(file.io, data_offset)
@@ -118,8 +115,7 @@ end
 function _next(file::TiffFile, offset::Int)
     seek(file.io, offset)
 
-    number_of_entries = read(file.io, UInt16)
-    number_of_entries = file.need_bswap ? Int(bswap(number_of_entries)) : Int(number_of_entries)
+    number_of_entries = do_bswap(file, read(file.io, UInt16))
 
     strip_offset_list = Int[]
     strip_offset = 0
@@ -131,8 +127,7 @@ function _next(file::TiffFile, offset::Int)
         tag_bytes = Unsigned[]
         append!(tag_bytes, read(file.io, UInt16, 2))
         append!(tag_bytes, read(file.io, UInt32, 2))
-        tag_bytes = file.need_bswap ? bswap.(tag_bytes) : tag_bytes
-        tag_id, tag_type, data_count, data_offset = Int.(tag_bytes)
+        tag_id, tag_type, data_count, data_offset = Int.(do_bswap(file, tag_bytes))
 
         curr_pos = position(file.io)
         if tag_id == 256
@@ -150,8 +145,7 @@ function _next(file::TiffFile, offset::Int)
             # if the data is spread across multiple strips
             if strip_num > 1
                 seek(file.io, strip_offset)
-                strip_offsets = read(file.io, UInt32, strip_num)
-                strip_offsets = file.need_bswap ? bswap.(strip_offsets) : strip_offsets
+                strip_offsets = do_bswap(file, read(file.io, UInt32, strip_num))
                 strip_offset_list = Int.(strip_offsets)
             else
                 strip_offset_list = [strip_offset]
@@ -161,7 +155,6 @@ function _next(file::TiffFile, offset::Int)
         seek(file.io, curr_pos)
     end
 
-    next_ifd = read(file.io, UInt32)
-    next_ifd = file.need_bswap ? bswap(next_ifd) : next_ifd
+    next_ifd = do_bswap(file, read(file.io, UInt32))
     next_ifd, strip_offset_list
 end
