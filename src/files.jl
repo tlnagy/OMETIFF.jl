@@ -27,10 +27,17 @@ mutable struct TiffFile
 end
 
 function TiffFile(uuid::String, filepath::String)
-    file = TiffFile(open(filepath))
-    file.uuid = uuid
-    file.filepath = filepath
-    file
+    try
+        file = TiffFile(open(filepath))
+        file.uuid = uuid
+        file.filepath = filepath
+        return file
+    catch e # the file probably got renamed
+        (!isa(e, SystemError)) && rethrow(e)
+        throw(FileIO.LoaderError("OMETIFF", "It looks like this file was renamed, "*
+        "but has internal links with the original name. Please rename to $filepath "*
+        "to load. See https://github.com/tlnagy/OMETIFF.jl/issues/14 for details."))
+    end
 end
 
 
