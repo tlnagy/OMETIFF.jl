@@ -10,6 +10,7 @@ function load(io::Stream{format"OMETIFF"})
     end
 
     orig_file = TiffFile(io)
+    summary = load_comments(orig_file)
 
     # load master OME-XML that contains all information about this dataset
     omexml = load_master_xml(orig_file)
@@ -96,7 +97,7 @@ function load(io::Stream{format"OMETIFF"})
         # TODO: Reduce the number of allocations here
     end
     squeezed_data = squeeze(Gray.(reinterpret(mappedtype, data)), (find(master_dims .== 1)...))
-    AxisArray(squeezed_data, get(axes_dims)[master_dims .> 1]...)
+    ImageMeta(AxisArray(squeezed_data, get(axes_dims)[master_dims .> 1]...), Summary=summary)
 end
 
 """Corresponding Julian types for OME-XML types"""

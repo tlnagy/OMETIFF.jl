@@ -158,3 +158,21 @@ function _next(file::TiffFile, offset::Int)
     next_ifd = do_bswap(file, read(file.io, UInt32))
     next_ifd, strip_offset_list
 end
+
+
+function load_comments(file)
+    seek(file.io, 24)
+    comment_header = Int(do_bswap(file, read(file.io, UInt32)))
+    if comment_header != 99384722
+        return ""
+    end
+    comment_offset = Int(do_bswap(file, read(file.io, UInt32)))
+    seek(file.io, comment_offset)
+    comment_header = read(file.io, UInt32)
+    comment_length = Int(do_bswap(file, read(file.io, UInt32)))
+    metadata = JSON.parse(String(read(file.io, UInt8, comment_length)))
+    if !haskey(metadata, "Summary")
+        return ""
+    end
+    metadata["Summary"]
+end
