@@ -76,7 +76,7 @@ function load(io::Stream{format"OMETIFF"})
 
                 n_strips = length(strip_offsets)
                 strip_len = floor(Int, (width * height) / n_strips)
-                read_dims = n_strips > 1 ? (strip_len) : (height, width)
+                read_dims = n_strips > 1 ? (strip_len) : (width, height)
 
                 # TODO: This shouldn't be allocated for each ifd
                 tmp = Array{get(master_rawtype)}(read_dims...)
@@ -85,9 +85,9 @@ function load(io::Stream{format"OMETIFF"})
                     read!(file.io, tmp)
                     tmp = file.need_bswap ? bswap.(tmp) : tmp
                     if n_strips > 1
-                        data[j, :, ifd.z_idx, ifd.c_idx, ifd.t_idx, pos_idx]= tmp
+                        data[j, :, ifd.z_idx, ifd.c_idx, ifd.t_idx, pos_idx] = tmp
                     else
-                        data[:, :, ifd.z_idx, ifd.c_idx, ifd.t_idx, pos_idx] = tmp
+                        data[:, :, ifd.z_idx, ifd.c_idx, ifd.t_idx, pos_idx] = tmp'
                     end
                 end
             end
