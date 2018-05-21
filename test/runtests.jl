@@ -83,7 +83,8 @@ end
 @testset "TIFF value verifications" begin
     files = [
         "testdata/singles/170918_tn_neutrophil_migration_wave.ome.tif",
-        "testdata/singles/single-channel.ome.tif"
+        "testdata/singles/single-channel.ome.tif",
+        "testdata/singles/background_1_MMStack.ome.tif"
     ]
     for filepath in files
         # open file using OMETIFF.jl
