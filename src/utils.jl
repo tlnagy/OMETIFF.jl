@@ -47,4 +47,4 @@ end
 Extract the name of the file backing a stream
 """
 extract_filename(io::IOStream) = split(io.name, " ")[2][1:end-1]
-extract_filename(io::Stream) = get(io.filename)
+extract_filename(io::Stream) = io.filename
