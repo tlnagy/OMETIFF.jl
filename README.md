@@ -3,7 +3,7 @@
 
 | PackageEvaluator  | Master Status  | Code coverage  |
 |:--|:--|:--|
-|  [![OMETIFF](http://pkg.julialang.org/badges/OMETIFF_0.6.svg)](http://pkg.julialang.org/detail/OMETIFF) | [![Build Status](https://travis-ci.org/tlnagy/OMETIFF.jl.svg?branch=master)](https://travis-ci.org/tlnagy/OMETIFF.jl)  | [![codecov.io](http://codecov.io/github/tlnagy/OMETIFF.jl/coverage.svg?branch=master)](http://codecov.io/github/tlnagy/OMETIFF.jl?branch=master)  |
+|  [![OMETIFF](http://pkg.julialang.org/badges/OMETIFF_0.6.svg)](http://pkg.julialang.org/detail/OMETIFF) [![OMETIFF](http://pkg.julialang.org/badges/OMETIFF_0.7.svg)](http://pkg.julialang.org/detail/OMETIFF) | [![Build Status](https://travis-ci.org/tlnagy/OMETIFF.jl.svg?branch=master)](https://travis-ci.org/tlnagy/OMETIFF.jl)  | [![codecov.io](http://codecov.io/github/tlnagy/OMETIFF.jl/coverage.svg?branch=master)](http://codecov.io/github/tlnagy/OMETIFF.jl?branch=master)  |
 
 Adds support for reading OME-TIFF files to the [Images.jl](https://github.com/JuliaImages/Images.jl)
 platform. Allows fast and easy interfacing with high-dimensional data with nice
