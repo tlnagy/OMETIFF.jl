@@ -1,7 +1,7 @@
 using OMETIFF
 using FileIO
 using AxisArrays
-using Base.Test
+using Test
 
 @testset "Single file OME-TIFFs" begin
     @testset "Single Channel OME-TIFF" begin

@@ -5,7 +5,7 @@ function load(f::File{format"OMETIFF"})
 end
 
 function load(io::Stream{format"OMETIFF"})
-    if io.filename != nothing && !contains(io.filename, ".ome.tif")
+    if io.filename != nothing && !occursin(".ome.tif", io.filename)
         throw(FileIO.LoaderError("OMETIFF", "Not an OME TIFF file!"))
     end
 
@@ -16,48 +16,48 @@ function load(io::Stream{format"OMETIFF"})
     omexml = load_master_xml(orig_file)
 
     # find all images in this dataset
-    images = find(omexml, "/ns:OME/ns:Image",["ns"=>namespace(omexml)])
-    results = Array{AxisArray}(length(images))
+    images = findall("/ns:OME/ns:Image", omexml, ["ns"=>namespace(omexml)])
+    results = Array{AxisArray}(undef, length(images))
 
-    pos_names = nodecontent.(find(omexml, "/ns:OME/ns:Image/ns:StageLabel[@Name]/@Name",["ns"=>namespace(omexml)]))
+    pos_names = nodecontent.(findall("/ns:OME/ns:Image/ns:StageLabel[@Name]/@Name", omexml, ["ns"=>namespace(omexml)]))
     # if all position names aren't unique then substitute names
     if length(pos_names) == 0 || !allunique(pos_names)
         pos_names = ["Pos$i" for i in 1:length(images)]
     end
 
     pixels = []
-    master_rawtype = Nullable{DataType}()
+    master_rawtype = nothing
     mappedtype = Int64
     master_dims = []
-    axes_dims = Nullable{Vector{AxisArrays.Axis}}()
+    axes_dims = nothing
     for (idx, image) in enumerate(images)
-        pixel = findfirst(image, "./ns:Pixels", ["ns"=>namespace(omexml)])
+        pixel = findfirst("./ns:Pixels", image, ["ns"=>namespace(omexml)])
         dims, axes_info = build_axes(pixel)
         rawtype, mappedtype = type_mapping[pixel["Type"]]
 
-        if isnull(master_rawtype)
-            master_rawtype = Nullable(rawtype)
-        elseif get(master_rawtype) != rawtype
+        if master_rawtype == nothing
+            master_rawtype = rawtype
+        elseif master_rawtype != rawtype
             throw(FileIO.LoaderError("OMETIFF", "Multiple different storage types not supported in a multi position image"))
         end
 
-        if isnull(axes_dims)
-            axes_dims = Nullable(axes_info)
+        if axes_dims == nothing
+            axes_dims = axes_info
             master_dims = dims
-        elseif get(axes_dims) != axes_info
+        elseif axes_dims != axes_info
             throw(FileIO.LoaderError("OMETIFF", "Axes changing between multiple imaging positions is not supported yet"))
         end
         push!(pixels, pixel)
     end
-    push!(get(axes_dims), Axis{:position}(Symbol.(pos_names)))
+    push!(axes_dims, Axis{:position}(Symbol.(pos_names)))
     push!(master_dims, length(pos_names))
 
-    data = Array{get(master_rawtype), length(master_dims)}(master_dims...)
+    data = Array{master_rawtype, length(master_dims)}(undef, master_dims...)
 
     for (pos_idx, pixel) in enumerate(pixels)
         files = Dict{String, TiffFile}()
 
-        tiffdatas = find(pixel, "./ns:TiffData", ["ns"=>namespace(omexml)])
+        tiffdatas = findall("./ns:TiffData", pixel, ["ns"=>namespace(omexml)])
 
         # TODO: Only the IFDs with a corresponding slice should be loaded.
         slices = DefaultDict{String, Dict{Int, ImageSlice}}(Dict{Int, ImageSlice}())
@@ -79,7 +79,7 @@ function load(io::Stream{format"OMETIFF"})
                 read_dims = n_strips > 1 ? (strip_len) : (width, height)
 
                 # TODO: This shouldn't be allocated for each ifd
-                tmp = Array{get(master_rawtype)}(read_dims...)
+                tmp = Array{master_rawtype}(undef, read_dims...)
                 for j in 1:n_strips
                     seek(file.io, strip_offsets[j])
                     read!(file.io, tmp)
@@ -96,8 +96,8 @@ function load(io::Stream{format"OMETIFF"})
         # drop unnecessary axes
         # TODO: Reduce the number of allocations here
     end
-    squeezed_data = squeeze(Gray.(reinterpret(mappedtype, data)), (find(master_dims .== 1)...))
-    ImageMeta(AxisArray(squeezed_data, get(axes_dims)[master_dims .> 1]...), Summary=summary)
+    squeezed_data = dropdims(Gray.(reinterpret(mappedtype, data)); dims=tuple(findall(master_dims .== 1)...))
+    ImageMeta(AxisArray(squeezed_data, axes_dims[master_dims .> 1]...), Summary=summary)
 end
 
 """Corresponding Julian types for OME-XML types"""
