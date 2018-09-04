@@ -53,15 +53,21 @@ function loadxml(file::TiffFile)
     rawxml = ""
 
     for i in 1:number_of_entries
-        tag_bytes = Unsigned[]
-        append!(tag_bytes, read(file.io, UInt16, 2))
-        append!(tag_bytes, read(file.io, UInt32, 2))
-        tag_id, tag_type, data_count, data_offset = Int.(do_bswap(file, tag_bytes))
+        combined = Unsigned[]
+        tag_info = Array{UInt16}(undef, 2)
+        data_info = Array{UInt32}(undef, 2)
+        read!(file.io, tag_info)
+        read!(file.io, data_info)
+        append!(combined, tag_info)
+        append!(combined, data_info)
+        tag_id, tag_type, data_count, data_offset = Int.(do_bswap(file, combined))
 
         if tag_id == 270 # Image Description tag
             seek(file.io, data_offset)
             # strip null values from string
-            raw_str = replace(String(read(file.io, UInt8, data_count)), "\0", "")
+            _data = Array{UInt8}(undef, data_count)
+            read!(file.io, _data)
+            raw_str = replace(String(_data), "\0"=>"")
             # check if is xml since ImageJ display settings are also stored in
             # ImageDescription tags
             # TODO: This should be replaced with some proper validation
@@ -108,12 +114,12 @@ end
 
 
 """
-    Base.next(file::TiffFile)
+    next(file::TiffFile)
 
 Loads the next IFD in `file` and returns a list of the strip offsets to load the
 data stored in this IFD.
 """
-function Base.next(file::TiffFile)
+function next(file::TiffFile)
     next_ifd, strip_offset_list = _next(file, file.offsets[end])
     (next_ifd > 0) && push!(file.offsets, next_ifd)
     strip_offset_list
@@ -131,11 +137,15 @@ function _next(file::TiffFile, offset::Int)
     height = 0
 
     for i in 1:number_of_entries
-        tag_bytes = Unsigned[]
-        append!(tag_bytes, read(file.io, UInt16, 2))
-        append!(tag_bytes, read(file.io, UInt32, 2))
-        tag_id, tag_type, data_count, data_offset = Int.(do_bswap(file, tag_bytes))
-
+        combined = Unsigned[]
+        tag_info = Array{UInt16}(undef, 2)
+        data_info = Array{UInt32}(undef, 2)
+        read!(file.io, tag_info)
+        read!(file.io, data_info)
+        append!(combined, tag_info)
+        append!(combined, data_info)
+        tag_id, tag_type, data_count, data_offset = Int.(do_bswap(file, combined))
+        
         curr_pos = position(file.io)
         if tag_id == 256
             width = data_offset
@@ -152,7 +162,9 @@ function _next(file::TiffFile, offset::Int)
             # if the data is spread across multiple strips
             if strip_num > 1
                 seek(file.io, strip_offset)
-                strip_offsets = do_bswap(file, read(file.io, UInt32, strip_num))
+                strip_info = Array{UInt32}(undef, strip_num)
+                read!(file.io, strip_info)
+                strip_offsets = do_bswap(file, strip_info)
                 strip_offset_list = Int.(strip_offsets)
             else
                 strip_offset_list = [strip_offset]
@@ -177,7 +189,9 @@ function load_comments(file)
     seek(file.io, comment_offset)
     comment_header = read(file.io, UInt32)
     comment_length = Int(do_bswap(file, read(file.io, UInt32)))
-    metadata = JSON.parse(String(read(file.io, UInt8, comment_length)))
+    metadata_bytes = Array{UInt8}(undef, comment_length)
+    read!(file.io, metadata_bytes)
+    metadata = JSON.parse(String(metadata_bytes))
     if !haskey(metadata, "Summary")
         return ""
     end

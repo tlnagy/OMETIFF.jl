@@ -4,9 +4,9 @@
 Cleans up `input` string and converts it into a symbol
 """
 function to_symbol(input::String)
-    fixed = replace(input, r"[^\w\ \-\_]", "")
-    fixed = replace(fixed, r"[\ \-\_]+", "_")
-    Symbol(replace(fixed, r"^[\d]", s"_\g<0>"))
+    fixed = replace(input, r"[^\w\ \-\_]"=>"")
+    fixed = replace(fixed, r"[\ \-\_]+"=>"_")
+    Symbol(replace(fixed, r"^[\d]"=>s"_\g<0>"))
 end
 
 
@@ -37,7 +37,8 @@ function check_bswap(io::Union{Stream, IOStream})
     # check if we need to swap byte order
     need_bswap = endianness != myendian()
 
-    tiff_version = read(io, UInt8, 2)
+    tiff_version = Array{UInt8}(undef, 2)
+    read!(io, tiff_version)
     (tiff_version != [0x2a, 0x00] && tiff_version != [0x00, 0x2a]) && error("Big-TIFF files aren't supported yet")
 
     return need_bswap
