@@ -93,7 +93,8 @@ function load_master_xml(file::TiffFile)
     omexml = loadxml(file)
     try
         # Check if the full OME-XML metadata is stored in another file
-        metadata_file = findfirst(omexml, "/ns:OME/ns:BinaryOnly", ["ns"=>namespace(omexml)])
+        metadata_file = findfirst("/ns:OME/ns:BinaryOnly", omexml, ["ns"=>namespace(omexml)])
+        (metadata_file == nothing) && return omexml
         uuid, filepath = metadata_file["UUID"], joinpath(dirname(file.filepath), metadata_file["MetadataFile"])
 
         # we have a companion metadata file

@@ -40,7 +40,7 @@ function read_tiffdata(tiffdata::EzXML.Node, files::Dict{String, TiffFile}, orig
     c = parse(Int, tiffdata["FirstC"])+1
     p = parse(Int, tiffdata["PlaneCount"])
 
-    uuid_node = findfirst(tiffdata, "./ns:UUID", ["ns"=>namespace(tiffdata)])
+    uuid_node = findfirst("./ns:UUID", tiffdata, ["ns"=>namespace(tiffdata)])
     uuid = nodecontent(uuid_node)
     filepath = joinpath(dirname(orig_file.filepath), uuid_node["FileName"])
 
@@ -70,7 +70,7 @@ function build_axes(image::EzXML.Node)
     dims = map(x->parse(Int, image[x]), dim_names)
 
     # extract channel names
-    channel_names = nodecontent.(find(image, "ns:Channel/@Name", ["ns"=>namespace(image)]))
+    channel_names = nodecontent.(findall("ns:Channel/@Name", image, ["ns"=>namespace(image)]))
     if isempty(channel_names)
         channel_names = ["C$x" for x in 1:dims[4]]
     end

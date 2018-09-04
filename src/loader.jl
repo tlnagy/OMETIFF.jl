@@ -19,7 +19,7 @@ function load(io::Stream{format"OMETIFF"})
     images = findall("/ns:OME/ns:Image", omexml, ["ns"=>namespace(omexml)])
     results = Array{AxisArray}(undef, length(images))
 
-    pos_names = nodecontent.(find(omexml, "/ns:OME/ns:Image/ns:StageLabel[@Name]/@Name",["ns"=>namespace(omexml)]))
+    pos_names = nodecontent.(findall("/ns:OME/ns:Image/ns:StageLabel[@Name]/@Name", omexml, ["ns"=>namespace(omexml)]))
     # if all position names aren't unique then substitute names
     if length(pos_names) == 0 || !allunique(pos_names)
         pos_names = ["Pos$i" for i in 1:length(images)]
@@ -31,7 +31,7 @@ function load(io::Stream{format"OMETIFF"})
     master_dims = []
     axes_dims = nothing
     for (idx, image) in enumerate(images)
-        pixel = findfirst(image, "./ns:Pixels", ["ns"=>namespace(omexml)])
+        pixel = findfirst("./ns:Pixels", image, ["ns"=>namespace(omexml)])
         dims, axes_info = build_axes(pixel)
         rawtype, mappedtype = type_mapping[pixel["Type"]]
 
@@ -57,7 +57,7 @@ function load(io::Stream{format"OMETIFF"})
     for (pos_idx, pixel) in enumerate(pixels)
         files = Dict{String, TiffFile}()
 
-        tiffdatas = find(pixel, "./ns:TiffData", ["ns"=>namespace(omexml)])
+        tiffdatas = findall("./ns:TiffData", pixel, ["ns"=>namespace(omexml)])
 
         # TODO: Only the IFDs with a corresponding slice should be loaded.
         slices = DefaultDict{String, Dict{Int, ImageSlice}}(Dict{Int, ImageSlice}())
