@@ -60,9 +60,11 @@ function load(io::Stream{format"OMETIFF"})
         tiffdatas = findall("./ns:TiffData", pixel, ["ns"=>namespace(omexml)])
 
         # TODO: Only the IFDs with a corresponding slice should be loaded.
+        max_ifd = -1
         slices = DefaultDict{String, Dict{Int, ImageSlice}}(Dict{Int, ImageSlice}())
         for tiffdata in tiffdatas
             slice = read_tiffdata(tiffdata, files, orig_file)
+            max_ifd = max(max_ifd, slice.ifd_idx)
             slices[slice.file.filepath][slice.ifd_idx] = slice
         end
 
@@ -70,9 +72,15 @@ function load(io::Stream{format"OMETIFF"})
 
         for (filepath, ifds) in slices
             file = files[filepath]
-            for i in sort(collect(keys(ifds)))
-                ifd = ifds[i]
+            reset(file) # reset file's current ifd to first one
+            for i in 1:max_ifd
                 strip_offsets = next(file)
+                # skip this ifd if it doesn't belong to this image or we've
+                # reached the of the file
+                if !haskey(ifds, i) || strip_offsets == nothing
+                    continue
+                end
+                ifd = ifds[i]
 
                 n_strips = length(strip_offsets)
                 strip_len = floor(Int, (width * height) / n_strips)
