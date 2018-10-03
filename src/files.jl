@@ -133,8 +133,7 @@ function next(file::TiffFile)
         return strip_offset_list
     end
     next_ifd, strip_offset_list = _next(file, file.offsets[end])
-    (next_ifd <= 0) && return nothing
-    push!(file.offsets, next_ifd)
+    (next_ifd > 0) && push!(file.offsets, next_ifd)
     file.loc += 1
     strip_offset_list
 end

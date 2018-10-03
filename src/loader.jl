@@ -75,9 +75,8 @@ function load(io::Stream{format"OMETIFF"})
             reset(file) # reset file's current ifd to first one
             for i in 1:max_ifd
                 strip_offsets = next(file)
-                # skip this ifd if it doesn't belong to this image or we've
-                # reached the of the file
-                if !haskey(ifds, i) || strip_offsets == nothing
+                # skip this ifd if it doesn't belong to this image
+                if !haskey(ifds, i)
                     continue
                 end
                 ifd = ifds[i]
