@@ -1,3 +1,4 @@
+(Sys.islinux() || Sys.iswindows()) && import ImageMagick # work around libz issues
 using OMETIFF
 using FileIO
 using AxisArrays
