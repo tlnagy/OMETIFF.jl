@@ -10,6 +10,9 @@ mutable struct TiffFile
     """Locations of the IFDs in the file stream"""
     offsets::Array{Int}
 
+    """Currently selected IFD in file, corresponds to an index in the `offset` array"""
+    loc::Int
+
     """Whether this file has a different endianness than the host computer"""
     need_bswap::Bool
 
@@ -22,6 +25,7 @@ mutable struct TiffFile
         file.need_bswap = check_bswap(io)
         first_ifd = do_bswap(file, read(file.io, UInt32))
         file.offsets = [first_ifd]
+        file.loc = 1
         file
     end
 end
@@ -117,14 +121,30 @@ end
 """
     next(file::TiffFile)
 
-Loads the next IFD in `file` and returns a list of the strip offsets to load the
-data stored in this IFD.
+Loads the next IFD in `file` as determined by `file.loc` and returns a list of
+the strip offsets to load the data stored in this IFD. If the IFD has not been
+loaded yet then this function loads it from disk, otherwise it returns the IFD
+location from memory.
 """
 function next(file::TiffFile)
+    if file.loc < length(file.offsets)
+        _, strip_offset_list = _next(file, file.offsets[file.loc])
+        file.loc += 1
+        return strip_offset_list
+    end
     next_ifd, strip_offset_list = _next(file, file.offsets[end])
     (next_ifd > 0) && push!(file.offsets, next_ifd)
+    file.loc += 1
     strip_offset_list
 end
+
+"""
+    reset(file)
+
+Resets the IFD pointer to the beginning of the file. This is helpful for when
+loading the next position from files that may already be fully loaded.
+"""
+reset(file::TiffFile) = (file.loc = 1)
 
 function _next(file::TiffFile, offset::Int)
     seek(file.io, offset)

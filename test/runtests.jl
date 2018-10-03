@@ -52,6 +52,29 @@ using Test
             @test size(img[Axis{:position}(:Pos1)]) == (1024, 1024)
         end
     end
+    # tests whether slices in the multi-dimensional array returned by OMETIFF.jl
+    # are correctly indexed
+    # see https://github.com/tlnagy/OMETIFF.jl/issues/19
+    @testset "Intercalated IFDs, issue #19" begin
+        open("testdata/singles/181003_multi_pos_time_course_1_MMStack.ome.tif") do f
+            s = Stream(format"OMETIFF", f, OMETIFF.extract_filename(f))
+            img = OMETIFF.load(s)
+            # verify against slices made in Fiji
+            for pos in [1, 2]
+                for tp in 0:9
+                    # load Fiji-made slices
+                    tiffslice = open("testdata/singles/181003_slices/P$(pos)_T$(tp).tif") do s
+                        FileIO.load(Stream(format"TIFF", s, OMETIFF.extract_filename(s)))
+                    end
+                    omeslice = img[Axis{:position}(pos), Axis{:time}(tp+1)].data
+                    # verify that ometiff slices are correctly indexed
+                    @testset "Testing P$(pos)_T$(tp).tif" begin
+                        @test all(omeslice .== tiffslice)
+                    end
+                end
+            end
+        end
+    end
 end
 @testset "Multi file OME-TIFFs" begin
     @testset "Multi file Z stack with master file" begin
