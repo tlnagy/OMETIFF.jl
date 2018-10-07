@@ -4,6 +4,10 @@ using FileIO
 using AxisArrays
 using Test
 
+@testset "TiffData Layouts" begin
+    include("tiffdatas.jl")
+end
+
 @testset "Single file OME-TIFFs" begin
     @testset "Single Channel OME-TIFF" begin
         open("testdata/singles/single-channel.ome.tif") do f

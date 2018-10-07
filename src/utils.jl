@@ -23,9 +23,6 @@ function myendian()
     end
 end
 
-
-@inline do_bswap(file, value) = file.need_bswap ? bswap.(value) : value
-
 """
     check_bswap(io::Union{Stream, IOStream})
 
