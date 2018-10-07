@@ -1,44 +1,28 @@
-"""
-An ImageSlice struct contains all the information from a TiffData element in
-the OME-XML.
-"""
-struct ImageSlice
-    """A pointer to the file containing this slice"""
-    file::TiffFile
+function read_tiffdatas(orig_file::TiffFile, images::Vector{EzXML.Node})
+    # tiffdatas = DefaultDict{String, Vector{TiffData}}(Vector{TiffData}())
 
-    """The IFD this slice corresponds to in the file"""
-    ifd_idx::Int
+    # for (img_idx, image) in enumerate(images)
+    #     tiffdataxml = findall(".//ns:TiffData", image, ["ns"=>namespace(image)])
 
-    """The index of this slice in the Z stack"""
-    z_idx::Int
-
-    """The index of this slice in the time dimension"""
-    t_idx::Int
-
-    """The index of this slice in the channel dimension"""
-    c_idx::Int
-
-    """
-    The number of ifds that slice applies to. The information within this object
-    will be mapped to IFDs from `ifd_idx` to `ifd_idx`+`num_ifds`-1.
-    """
-    num_ifds::Int
+    #     for item in tiffdataxml
+    #         filepath, tiffdata = read_tiffdata(orig_file, item, img_idx)
+    #         push!(tiffdatas[filepath], tiffdata)
+    #     end
+    # end
+    # tiffdatas
 end
 
 
-
 """
-    read_tiffdata(tiffdata::EzXML.Node, files::Dict{String, TiffFile}, orig_file::TiffFile)
+    read_tiffdata(orig_file, tiffdata)
 
-Reads a Tiff Data entry and generates an ImageSlice object from it. Keeps track of all relevant
-files.
+Reads the XML corresponding to a TiffData entry and generates an `TiffData` object from it.
 """
-function read_tiffdata(tiffdata::EzXML.Node, files::Dict{String, TiffFile}, orig_file::TiffFile)
-    ifd = parse(Int, tiffdata["IFD"])+1
-    z = parse(Int, tiffdata["FirstZ"])+1
-    t = parse(Int, tiffdata["FirstT"])+1
-    c = parse(Int, tiffdata["FirstC"])+1
-    p = parse(Int, tiffdata["PlaneCount"])
+function read_tiffdata!(ifds::OrderedDict{NTuple{4, Int}, IFD},
+                        tiffdata::EzXML.Node,
+                        files::Dict{String, TiffFile},
+                        orig_file::TiffFile)
+
 
     uuid_node = findfirst("./ns:UUID", tiffdata, ["ns"=>namespace(tiffdata)])
     uuid = nodecontent(uuid_node)
@@ -54,11 +38,90 @@ function read_tiffdata(tiffdata::EzXML.Node, files::Dict{String, TiffFile}, orig
         file_ptr = TiffFile(uuid, filepath)
         files[filepath] = file_ptr
     end
+end
 
-    ImageSlice(file_ptr, ifd, z, t, c, p)
+function getattribute(tiffdata::EzXML.Node, attr::String)
+    try
+        parse(Int, tiffdata[attr])+1
+    catch e
+        (!isa(e, KeyError)) && rethrow(e)
+        -1
+    end
+end
+
+"""
+    ifdindex!(ifds, image, dims, imageidx)
+
+Update the master ifd index list, `ifds`, using the TiffData's in `image`.
+`dims` is a NamedTuple of the size of each dimension of `image` in the order
+specified by the `DimensionOrder` parameter. `imageidx` is positive integer
+corresponding to the index of the current image in the OME-TIFF file.
+
+When we read the `TiffFile` we'll know what indices in the 6D matrix each IFD
+belongs to.
+"""
+function ifdindex!(ifd_index::Array{Union{NTuple{4, Int}, Nothing}},
+                   ifd_files::Array{Union{Tuple{String, String}, Nothing}},
+                   obs_filepaths::Set{String},
+                   image::EzXML.Node,
+                   dims::NamedTuple,
+                   filepath::String,
+                   imageidx::Int)
+
+    tiffdatas = findall(".//ns:TiffData", image, ["ns"=>namespace(image)])
+
+    ifd = 1
+    pos = 1
+    for tiffdata in tiffdatas
+        try # if this tiffdata specifies the corresponding IFD
+            ifd = parse(Int, tiffdata["IFD"]) + 1
+        catch
+            ifd = 1
+        end
+
+        uuid_node = findfirst("./ns:UUID", tiffdata, ["ns"=>namespace(tiffdata)])
+        if uuid_node != nothing
+            uuid = nodecontent(uuid_node)
+            filepath = joinpath(dirname(filepath), uuid_node["FileName"])
+            if !in(filepath, obs_filepaths)
+                ifd = pos
+                pos += 1
+                push!(obs_filepaths, filepath)
+            end
+            ifd_files[ifd] = (uuid, filepath)
+        end
+
+        # get Z, C, T indices (in order specified by `dims`)
+        indices = Tuple(getattribute(tiffdata, "First$x") for x in keys(dims)[3:5])
+        # how many ifds does this tiffdata correspond to
+        p = getattribute(tiffdata, "PlaneCount") - 1
+
+        # if none of the Z, C, T indices are specified then we'll assume the
+        # indices starting with the inner dimension, etc
+        if all(indices .< 0)
+            # index in the master ifd list
+            idx = ifd
+            # reverse iterate since we cycle the inner dimension the most
+            for k=1:dims[5], j=1:dims[4], i=1:dims[3]
+                ifd_index[idx] = (i, j, k, imageidx)
+                ifd_files[idx] = nothing
+                # if this tiffdata applies to multiple ifds then check that we
+                # don't exceed the specified number of ifds
+                (p > 1 && idx >= p+ifd-1) && break
+                idx += 1
+            end
+        # if any of the indices are specified in the tiffdata then use these
+        else
+            indices = (indices..., imageidx) # add the position index
+            # all the indices that are not specified, we assume the first index
+            ifd_index[ifd] = Tuple(pos > 0 ? pos : 1 for pos in indices)
+
+        end
+    end
 end
 
 
+const axis_name_mapping = (X = :x, Y = :y, Z=:z, T=:time, C=:channel, P=:position)
 """
     build_axes(omexml::EzXML.Node)
 
@@ -66,33 +129,31 @@ Returns an array of ints with dimension sizes and an array of `AxisArrays.Axis`
 objects both in XYZCT order given the Pixels node of the OME-XML document
 """
 function build_axes(image::EzXML.Node)
-    dim_names = ["SizeY", "SizeX", "SizeZ", "SizeC", "SizeT"]
-    dims = map(x->parse(Int, image[x]), dim_names)
+    order = "YX"*join(replace(split(image["DimensionOrder"], ""), "X"=>"", "Y"=>""))
+    order = Tuple(Symbol(dim) for dim in order)
+    dims = NamedTuple{order, NTuple{5, Int}}(Tuple(parse(Int, image["Size$(x)"]) for x in order))
+    dims = merge(dims, [:P=>1])
 
     # extract channel names
     channel_names = nodecontent.(findall("ns:Channel/@Name", image, ["ns"=>namespace(image)]))
     if isempty(channel_names)
-        channel_names = ["C$x" for x in 1:dims[4]]
+        channel_names = ["C$x" for x in 1:dims[:C]]
     end
 
-    time_axis = Axis{:time}(1:dims[5])
+    time_axis = 1:dims[:T]
     try # attempt to build a more specific time axis
         # grab increment
         increment = parse(Float64, image["TimeIncrement"])
         # attempt to map the time units
         unittype = getfield(Unitful, Symbol(image["TimeIncrementUnit"]))
 
-        time_axis = Axis{:time}(Unitful.upreferred.((0:increment:increment*(dims[5]-1))*unittype))
+        time_axis = Unitful.upreferred.((0:increment:increment*(dims[5]-1))*unittype)
     catch
     end
 
-    axes = [
-        Axis{:y}(1:dims[1]),
-        Axis{:x}(1:dims[2]),
-        Axis{:z}(1:dims[3]),
-        Axis{:channel}(to_symbol.(channel_names)),
-        time_axis
-    ]
+    vals =  (X=1:dims[:X], Y=1:dims[:Y], Z=1:dims[:Z], C=to_symbol.(channel_names), T=time_axis, P=1)
+
+    axes = [Axis{axis_name_mapping[key]}(vals[key]) for key in keys(dims)]
 
     dims, axes
 end

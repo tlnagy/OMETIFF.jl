@@ -25,6 +25,14 @@ mutable struct TiffFile
     end
 end
 
+struct IFD
+    """Pointer to the file containing this IFD"""
+    file::TiffFile
+
+    """Location(s) in `file` of the data corresponding to this IFD"""
+    strip_offsets::Vector{Int}
+end
+
 function TiffFile(uuid::String, filepath::String)
     try
         file = TiffFile(open(filepath))
@@ -39,49 +47,44 @@ function TiffFile(uuid::String, filepath::String)
     end
 end
 
-
 """
-    loadxml(file::TiffFile)
 
-Extract the OME-XML embedded in the TiffFile `file`.
+Load all the files and run through them all to find the offsets of each IFD.
 """
-function loadxml(file::TiffFile)
-    # ome-xml is stored in the first offset
-    seek(file.io, file.offsets[1])
-    number_of_entries = do_bswap(file, read(file.io, UInt16))
-    rawxml = ""
+function get_ifds(orig_file::TiffFile,
+                  ifd_files::Array{Union{Tuple{String, String}, Nothing}})
 
-    for i in 1:number_of_entries
-        combined = Unsigned[]
-        tag_info = Array{UInt16}(undef, 2)
-        data_info = Array{UInt32}(undef, 2)
-        read!(file.io, tag_info)
-        read!(file.io, data_info)
-        append!(combined, tag_info)
-        append!(combined, data_info)
-        tag_id, tag_type, data_count, data_offset = Int.(do_bswap(file, combined))
+    # open all files referenced by the tiffdatas
+    files = Dict{Tuple{String, String}, TiffFile}()
+    for item in unique(ifd_files)
+        (item == nothing) && continue
+        filepath = joinpath(dirname(orig_file.filepath), item[2])
 
-        if tag_id == 270 # Image Description tag
-            seek(file.io, data_offset)
-            # strip null values from string
-            _data = Array{UInt8}(undef, data_count)
-            read!(file.io, _data)
-            raw_str = replace(String(_data), "\0"=>"")
-            # check if is xml since ImageJ display settings are also stored in
-            # ImageDescription tags
-            # TODO: This should be replaced with some proper validation
-            if raw_str[1:5] == "<?xml"
-                rawxml = raw_str
-                break
+        # if this file is the same as the base file, then don't open it again
+        if filepath == orig_file.filepath
+            files[item] = orig_file
+            orig_file.uuid = item[1]
+        # else open a new pointer to this file
+        else
+            files[item] = TiffFile(item[1], filepath)
+        end
+    end
+
+    ifds = Array{Union{IFD, Nothing}}(nothing, length(ifd_files))
+
+    for (fileid, file) in files
+        ifd_offsets = collect(file)
+
+        ifd_idx_in_file = 0
+        for (idx, ifd_file) in enumerate(ifd_files)
+            (ifd_file == nothing) && continue
+            if ifd_file == fileid
+                ifds[idx] = IFD(file, ifd_offsets[ifd_idx_in_file+=1])
             end
         end
     end
-    seek(file.io, file.offsets[end])
-
-    xdoc = parsexml(rawxml)
-    omexml = root(xdoc)
+    files, ifds
 end
-
 
 """
     load_master_xml(file::TiffFile)
@@ -135,10 +138,9 @@ function Base.iterate(file::TiffFile, state::Tuple{Union{Vector{Int}, Nothing}, 
     return (strip_locs, (next_strip_locs, next_ifd))
 end
 
-function read_ifd(file::TiffFile, offset::Int)
-    if offset <= 0
-        return nothing, nothing
-    end
+loadxml(file::TiffFile) = read_ifd(file, file.first_offset; getxml=true)
+
+function read_ifd(file::TiffFile, offset::Int; getxml=false)
     seek(file.io, offset)
 
     number_of_entries = do_bswap(file, read(file.io, UInt16))
@@ -149,16 +151,15 @@ function read_ifd(file::TiffFile, offset::Int)
     width = 0
     height = 0
 
+    tag_info = Array{UInt16}(undef, 2)
+    data_info = Array{UInt32}(undef, 2)
+
     for i in 1:number_of_entries
-        combined = Unsigned[]
-        tag_info = Array{UInt16}(undef, 2)
-        data_info = Array{UInt32}(undef, 2)
         read!(file.io, tag_info)
         read!(file.io, data_info)
-        append!(combined, tag_info)
-        append!(combined, data_info)
-        tag_id, tag_type, data_count, data_offset = Int.(do_bswap(file, combined))
-        
+        tag_id, tag_type = do_bswap(file, tag_info)
+        data_count, data_offset = do_bswap(file, data_info)
+
         curr_pos = position(file.io)
         if tag_id == 256
             width = data_offset
@@ -175,20 +176,32 @@ function read_ifd(file::TiffFile, offset::Int)
             # if the data is spread across multiple strips
             if strip_num > 1
                 seek(file.io, strip_offset)
-                strip_info = Array{UInt32}(undef, strip_num)
+                strip_info = Vector{UInt32}(undef, strip_num)
                 read!(file.io, strip_info)
                 strip_offsets = do_bswap(file, strip_info)
                 strip_offset_list = Int.(strip_offsets)
             else
-                strip_offset_list = [strip_offset]
+                strip_offset_list = [Int(strip_offset)]
             end
-        elseif tag_id == 279 # Strip byte counts
+        elseif getxml && tag_id == 270 # Image Description tag
+            seek(file.io, data_offset)
+            # strip null values from string
+            _data = Array{UInt8}(undef, data_count)
+            read!(file.io, _data)
+            raw_str = replace(String(_data), "\0"=>"")
+            # check if is xml since ImageJ display settings are also stored in
+            # ImageDescription tags
+            # TODO: This should be replaced with some proper validation
+            if raw_str[1:5] == "<?xml"
+                xdoc = parsexml(raw_str)
+                return root(xdoc)
+            end
         end
         seek(file.io, curr_pos)
     end
 
-    next_ifd = do_bswap(file, read(file.io, UInt32))
-    next_ifd, strip_offset_list
+    next_ifd = Int(do_bswap(file, read(file.io, UInt32)))
+    strip_offset_list, next_ifd
 end
 
 
@@ -210,3 +223,14 @@ function load_comments(file)
     end
     metadata["Summary"]
 end
+
+function do_bswap(file::TiffFile, values::AbstractArray)
+    if file.need_bswap
+        for i in 1:length(values)
+            values[i] = bswap(values[i])
+        end
+    end
+    values
+end
+
+do_bswap(file::TiffFile, value) = file.need_bswap ? bswap(value) : value
