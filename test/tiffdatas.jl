@@ -182,46 +182,58 @@ end
     @test get_result(get_ifds(fragment5)...) == expected5
 end
 
-fragment6 = """
-<Pixels BigEndian="false" DimensionOrder="XYCZT" ID="Pixels:0" PhysicalSizeX="5.2304" PhysicalSizeXUnit="µm" PhysicalSizeY="5.2304" PhysicalSizeYUnit="µm" SizeC="1" SizeT="10" SizeX="256" SizeY="256" SizeZ="1" TimeIncrement="5000.0" TimeIncrementUnit="ms" Type="uint16">
-  <Channel ID="Channel:0:0" Name="Default" SamplesPerPixel="1">
-    <LightPath/>
-  </Channel>
-  <TiffData FirstC="0" FirstT="0" FirstZ="0" IFD="0" PlaneCount="1">
-    <UUID FileName="181003_multi_pos_time_course_1_MMStack.ome.tif">urn:uuid:3872d873-e5a6-421b-a3a2-4d6539f77442</UUID>
-  </TiffData>
-  <TiffData FirstC="0" FirstT="1" FirstZ="0" IFD="1" PlaneCount="1">
-    <UUID FileName="181003_multi_pos_time_course_1_MMStack.ome.tif">urn:uuid:3872d873-e5a6-421b-a3a2-4d6539f77442</UUID>
-  </TiffData>
-  <TiffData FirstC="0" FirstT="2" FirstZ="0" IFD="2" PlaneCount="1">
-    <UUID FileName="181003_multi_pos_time_course_1_MMStack.ome.tif">urn:uuid:3872d873-e5a6-421b-a3a2-4d6539f77442</UUID>
-  </TiffData>
-  <TiffData FirstC="0" FirstT="3" FirstZ="0" IFD="3" PlaneCount="1">
-    <UUID FileName="181003_multi_pos_time_course_1_MMStack.ome.tif">urn:uuid:3872d873-e5a6-421b-a3a2-4d6539f77442</UUID>
-  </TiffData>
-</Pixels>
-"""
+@testset "Missing IFDs" begin
 
-frag6 = get_ifds(fragment6)
-fragment7 = """
-<Pixels BigEndian="false" DimensionOrder="XYCTZ" ID="Pixels:0:0" Type="uint8" SizeC="1" SizeT="1" SizeX="18" SizeY="24" SizeZ="5">
-  <Channel Color="-2147483648" ID="Channel:0"/>
-  <TiffData FirstC="0" FirstT="0" FirstZ="0" IFD="0" PlaneCount="1">
-    <UUID FileName="multifile-Z1.ome.tiff">urn:uuid:d25bfea2-2708-4a4f-bcd9-8ab1ac478041</UUID>
-  </TiffData>
-  <TiffData FirstC="0" FirstT="0" FirstZ="1" IFD="0" PlaneCount="1">
-    <UUID FileName="multifile-Z2.ome.tiff">urn:uuid:7f283a5c-828e-4dec-955f-1e5ed26773b6</UUID>
-  </TiffData>
-  <TiffData FirstC="0" FirstT="0" FirstZ="2" IFD="0" PlaneCount="1">
-    <UUID FileName="multifile-Z3.ome.tiff">urn:uuid:e3bdd73e-d2a8-4999-9135-b8422265ba18</UUID>
-  </TiffData>
-  <TiffData FirstC="0" FirstT="0" FirstZ="3" IFD="0" PlaneCount="1">
-    <UUID FileName="multifile-Z4.ome.tiff">urn:uuid:be142aa6-c8d8-40cb-9494-7ef5123308ff</UUID>
-  </TiffData>
-  <TiffData FirstC="0" FirstT="0" FirstZ="4" IFD="0" PlaneCount="1">
-    <UUID FileName="multifile-Z5.ome.tiff">urn:uuid:38731a88-9908-4aec-8df3-18d63c0d24dd</UUID>
-  </TiffData>
-</Pixels>
-"""
+    fragment6 = """
+    <Pixels BigEndian="false" DimensionOrder="XYCZT" ID="Pixels:0" PhysicalSizeX="5.2304" PhysicalSizeXUnit="µm" PhysicalSizeY="5.2304" PhysicalSizeYUnit="µm" SizeC="1" SizeT="10" SizeX="256" SizeY="256" SizeZ="1" TimeIncrement="5000.0" TimeIncrementUnit="ms" Type="uint16">
+    <Channel ID="Channel:0:0" Name="Default" SamplesPerPixel="1">
+        <LightPath/>
+    </Channel>
+    <TiffData FirstC="0" FirstT="0" FirstZ="0" IFD="0" PlaneCount="1">
+        <UUID FileName="181003_multi_pos_time_course_1_MMStack.ome.tif">urn:uuid:3872d873-e5a6-421b-a3a2-4d6539f77442</UUID>
+    </TiffData>
+    <TiffData FirstC="0" FirstT="1" FirstZ="0" IFD="1" PlaneCount="1">
+        <UUID FileName="181003_multi_pos_time_course_1_MMStack.ome.tif">urn:uuid:3872d873-e5a6-421b-a3a2-4d6539f77442</UUID>
+    </TiffData>
+    <TiffData FirstC="0" FirstT="2" FirstZ="0" IFD="2" PlaneCount="1">
+        <UUID FileName="181003_multi_pos_time_course_1_MMStack.ome.tif">urn:uuid:3872d873-e5a6-421b-a3a2-4d6539f77442</UUID>
+    </TiffData>
+    <TiffData FirstC="0" FirstT="3" FirstZ="0" IFD="3" PlaneCount="1">
+        <UUID FileName="181003_multi_pos_time_course_1_MMStack.ome.tif">urn:uuid:3872d873-e5a6-421b-a3a2-4d6539f77442</UUID>
+    </TiffData>
+    </Pixels>
+    """
 
-frag7 = get_ifds(fragment7)
+    ifd_index, ifd_files, dimlist = get_ifds(fragment6)
+
+    @test all(ifd_index[1:4] .== [(1, 1, 1, 1), (1, 1, 2, 1), (1, 1, 3, 1), (1, 1, 4, 1)])
+    @test all(ifd_index[5:end] .== nothing)
+end
+
+@testset "IFD Index Sharing" begin
+
+    fragment7 = """
+    <Pixels BigEndian="false" DimensionOrder="XYCTZ" ID="Pixels:0:0" Type="uint8" SizeC="1" SizeT="1" SizeX="18" SizeY="24" SizeZ="5">
+    <Channel Color="-2147483648" ID="Channel:0"/>
+    <TiffData FirstC="0" FirstT="0" FirstZ="0" IFD="0" PlaneCount="1">
+        <UUID FileName="multifile-Z1.ome.tiff">urn:uuid:d25bfea2-2708-4a4f-bcd9-8ab1ac478041</UUID>
+    </TiffData>
+    <TiffData FirstC="0" FirstT="0" FirstZ="1" IFD="0" PlaneCount="1">
+        <UUID FileName="multifile-Z2.ome.tiff">urn:uuid:7f283a5c-828e-4dec-955f-1e5ed26773b6</UUID>
+    </TiffData>
+    <TiffData FirstC="0" FirstT="0" FirstZ="2" IFD="0" PlaneCount="1">
+        <UUID FileName="multifile-Z3.ome.tiff">urn:uuid:e3bdd73e-d2a8-4999-9135-b8422265ba18</UUID>
+    </TiffData>
+    <TiffData FirstC="0" FirstT="0" FirstZ="3" IFD="0" PlaneCount="1">
+        <UUID FileName="multifile-Z4.ome.tiff">urn:uuid:be142aa6-c8d8-40cb-9494-7ef5123308ff</UUID>
+    </TiffData>
+    <TiffData FirstC="0" FirstT="0" FirstZ="4" IFD="0" PlaneCount="1">
+        <UUID FileName="multifile-Z5.ome.tiff">urn:uuid:38731a88-9908-4aec-8df3-18d63c0d24dd</UUID>
+    </TiffData>
+    </Pixels>
+    """
+
+    ifd_index, ifd_files, dimlist = get_ifds(fragment7)
+
+    @test all(ifd_index .== [(1, 1, 1, 1), (1, 1, 2, 1), (1, 1, 3, 1), (1, 1, 4, 1), (1, 1, 5, 1)])
+end

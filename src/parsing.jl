@@ -29,7 +29,9 @@ function ifdindex!(ifd_index::Array{Union{NTuple{4, Int}, Nothing}},
     tiffdatas = findall(".//ns:TiffData", image, ["ns"=>namespace(image)])
 
     ifd = 1
-    pos = 1
+    # this is an offset value since multiple ifds can share the same index if
+    # they are split across files, IFD1 (File1), IFD1 (File2), etc
+    file_ifd_offset = 1
     for tiffdata in tiffdatas
         try # if this tiffdata specifies the corresponding IFD
             ifd = parse(Int, tiffdata["IFD"]) + 1
@@ -41,9 +43,10 @@ function ifdindex!(ifd_index::Array{Union{NTuple{4, Int}, Nothing}},
         if uuid_node != nothing
             uuid = nodecontent(uuid_node)
             filepath = joinpath(dirname(filepath), uuid_node["FileName"])
+            # if this file isn't one we've observed before, increment the offset
             if !in(filepath, obs_filepaths)
-                ifd = pos
-                pos += 1
+                ifd = file_ifd_offset
+                file_ifd_offset += 1
                 push!(obs_filepaths, filepath)
             end
             ifd_files[ifd] = (uuid, filepath)
@@ -73,7 +76,6 @@ function ifdindex!(ifd_index::Array{Union{NTuple{4, Int}, Nothing}},
             indices = (indices..., imageidx) # add the position index
             # all the indices that are not specified, we assume the first index
             ifd_index[ifd] = Tuple(pos > 0 ? pos : 1 for pos in indices)
-
         end
     end
 end
