@@ -7,8 +7,8 @@ mutable struct TiffFile
 
     io::Union{Stream, IOStream}
 
-    """Locations of the IFDs in the file stream"""
-    offsets::Array{Int}
+    """Location of the first IFD in the file stream"""
+    first_offset::Int
 
     """Whether this file has a different endianness than the host computer"""
     need_bswap::Bool
@@ -20,8 +20,7 @@ mutable struct TiffFile
         # TODO: Parsing the filename from the IO name is likely to be fragile
         file.filepath = extract_filename(io)
         file.need_bswap = check_bswap(io)
-        first_ifd = do_bswap(file, read(file.io, UInt32))
-        file.offsets = [first_ifd]
+        file.first_offset = Int(do_bswap(file, read(file.io, UInt32)))
         file
     end
 end
@@ -114,30 +113,26 @@ function load_master_xml(file::TiffFile)
 end
 
 
-Base.eltype(::Type{TiffFile}) = Array{Int}
+Base.eltype(::Type{TiffFile}) = Vector{Int}
 Base.IteratorSize(::Type{TiffFile}) = Base.SizeUnknown()
 
-function Base.iterate(file::TiffFile)
-    # read the first ifd
-    next_ifd, strip_offset_list = read_ifd(file, file.offsets[1])
-    (next_ifd !== nothing) && push!(file.offsets, next_ifd)
-    iterate(file, (strip_offset_list, 1))
-end
+Base.iterate(file::TiffFile) = iterate(file, (read_ifd(file, file.first_offset)))
 
-function Base.iterate(file::TiffFile, state)
-    element, count = state
-    # get next element
-    (element == nothing) && return nothing
+"""
+    iterate(file, state)
 
-    if count+1 >= length(file.offsets)
-        next_ifd, strip_offset_list = read_ifd(file, file.offsets[end])
-        (next_ifd !== nothing) && push!(file.offsets, next_ifd)
-        return (element, (strip_offset_list, count+1))
-    end
+Given a `state`, returns a tuple with list of locations of the data strips corresponding to
+that IFD in `file` and the updated state.
+"""
+function Base.iterate(file::TiffFile, state::Tuple{Union{Vector{Int}, Nothing}, Int})
+    strip_locs, ifd = state
+    # if current element doesn't exist, exit
+    (strip_locs == nothing) && return nothing
+    (ifd <= 0) && return (strip_locs, (nothing, 0))
 
-    _, strip_offset_list = read_ifd(file, file.offsets[count+1])
+    next_strip_locs, next_ifd = read_ifd(file, ifd)
 
-    return (element, (strip_offset_list, count+1))
+    return (strip_locs, (next_strip_locs, next_ifd))
 end
 
 function read_ifd(file::TiffFile, offset::Int)
