@@ -25,14 +25,6 @@ mutable struct TiffFile
     end
 end
 
-struct IFD
-    """Pointer to the file containing this IFD"""
-    file::TiffFile
-
-    """Location(s) in `file` of the data corresponding to this IFD"""
-    strip_offsets::Vector{Int}
-end
-
 function TiffFile(uuid::String, filepath::String)
     try
         file = TiffFile(open(filepath))
@@ -45,6 +37,14 @@ function TiffFile(uuid::String, filepath::String)
         "but has internal links with the original name. Please rename to $filepath "*
         "to load. See https://github.com/tlnagy/OMETIFF.jl/issues/14 for details."))
     end
+end
+
+struct IFD
+    """Pointer to the file containing this IFD"""
+    file::TiffFile
+
+    """Location(s) in `file` of the data corresponding to this IFD"""
+    strip_offsets::Vector{Int}
 end
 
 """
