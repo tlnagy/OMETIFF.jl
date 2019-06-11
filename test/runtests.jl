@@ -1,11 +1,23 @@
 (Sys.islinux() || Sys.iswindows()) && import ImageMagick # work around libz issues
 using OMETIFF
 using FileIO
+using Unitful
 using AxisArrays
 using Test
 
 @testset "TiffData Layouts" begin
     include("tiffdatas.jl")
+end
+
+@testset "Axes Values" begin
+    open("testdata/singles/181003_multi_pos_time_course_1_MMStack.ome.tif") do f
+        s = Stream(format"OMETIFF", f, OMETIFF.extract_filename(f))
+        img = OMETIFF.load(s)
+        # check that the first three axes are length, length, time
+        @test all(dimension.(first.(axisvalues(img)[1:3])) .== (u"𝐋", u"𝐋", u"𝐓"))
+        # check the value of the 3rd index along the y axis
+        @test axisvalues(img)[1][3] == 10.4608u"μm"
+    end
 end
 
 @testset "Single file OME-TIFFs" begin

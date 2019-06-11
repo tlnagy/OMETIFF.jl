@@ -80,6 +80,30 @@ function ifdindex!(ifd_index::Array{Union{NTuple{4, Int}, Nothing}},
     end
 end
 
+"""
+    get_unitful_axis(image, dimsize, stepsize, units)
+
+Attempts to return a unitful axis with a length of `dimsize`. `stepsize` and
+`units` should be the XML tags in `image`.
+"""
+function get_unitful_axis(image::EzXML.Node, dimsize::Int, stepsize::String, units::String)
+    try
+        # OME-XML stores the step size
+        increment = parse(Float64, image[stepsize])
+
+        # This is an ugly hack to convert the unit string into Unitful.Unit till
+        # https://github.com/PainterQubits/Unitful.jl/issues/214 gets fixed
+        unitstr = replace(image[units], "u" => "μ")
+        unittype = @eval @u_str $unitstr
+
+        # Create a unitful range
+        return 0*unittype:increment*unittype:increment*(dimsize-1)*unittype
+    catch
+        # alternatively, just return the bare unitless range
+        return 1:dimsize
+    end
+end
+
 
 const axis_name_mapping = (X = :x, Y = :y, Z=:z, T=:time, C=:channel, P=:position)
 """
@@ -100,18 +124,14 @@ function build_axes(image::EzXML.Node)
         channel_names = ["C$x" for x in 1:dims[:C]]
     end
 
-    time_axis = 1:dims[:T]
-    try # attempt to build a more specific time axis
-        # grab increment
-        increment = parse(Float64, image["TimeIncrement"])
-        # attempt to map the time units
-        unittype = getfield(Unitful, Symbol(image["TimeIncrementUnit"]))
-
-        time_axis = Unitful.upreferred.((0:increment:increment*(dims[5]-1))*unittype)
-    catch
-    end
-
-    vals =  (X=1:dims[:X], Y=1:dims[:Y], Z=1:dims[:Z], C=to_symbol.(channel_names), T=time_axis, P=1)
+    vals = (
+        X=get_unitful_axis(image, dims[:X], "PhysicalSizeX", "PhysicalSizeXUnit"),
+        Y=get_unitful_axis(image, dims[:Y], "PhysicalSizeY", "PhysicalSizeYUnit"),
+        Z=get_unitful_axis(image, dims[:Z], "PhysicalSizeZ", "PhysicalSizeZUnit"),
+        C=to_symbol.(channel_names),
+        T=get_unitful_axis(image, dims[:T], "TimeIncrement", "TimeIncrementUnit"),
+        P=1
+    )
 
     axes = [Axis{axis_name_mapping[key]}(vals[key]) for key in keys(dims)]
 
