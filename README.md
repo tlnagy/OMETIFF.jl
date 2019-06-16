@@ -56,7 +56,7 @@ julia> img["Description"] # get any notes embedded in the image
 "nd4 + nd8 in"
 ```
 
-### More advanged usage
+### More advanced usage
 
 The image updates all the axes as we subset it. Observe that since we're grabbing 5x5x1x1 subset of
 the image, all the axes update to reflect this slice.
