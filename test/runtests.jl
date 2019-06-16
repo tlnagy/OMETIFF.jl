@@ -145,3 +145,7 @@ end
         @test all(ome.data .== tiff)
     end
 end
+
+@testset "Error checks" begin
+    @test_throws FileIO.LoaderError load(File(format"OMETIFF", joinpath("testdata", "nonometif.tif")))
+end
