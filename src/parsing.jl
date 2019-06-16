@@ -158,7 +158,7 @@ function get_elapsed_times(containers::Vector{EzXML.Node}, master_dims::NamedTup
 
     # get the used dims that aren't x or y (since each xy plane has one elapsed time)
     nonxydims = NamedTuple{Tuple(k for (k, v) in pairs(master_dims) if k != :X && k != :Y && v > 1)}(master_dims)
-    elapsed_times = fill(0.0*default_unit, values(nonxydims))
+    elapsed_times = fill(NaN*default_unit, values(nonxydims))
 
     # OMETIFF stores the Z, T, C info for each plane in TheZ, TheT, and TheC attributes
     attrnames = ["The$k" for k in keys(nonxydims) if k != :P]
