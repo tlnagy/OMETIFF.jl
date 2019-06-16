@@ -8,7 +8,6 @@ using FixedPointNumbers
 using Colors
 using EzXML
 using FileIO
-using DataStructures
 using JSON
 using ImageMetadata
 using Images
