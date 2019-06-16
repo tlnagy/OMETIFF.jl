@@ -5,8 +5,14 @@ using Unitful
 using AxisArrays
 using Test
 
+include("utils.jl")
+
 @testset "TiffData Layouts" begin
     include("tiffdatas.jl")
+end
+
+@testset "Elapsed Time" begin
+    include("elapsedtime.jl")
 end
 
 @testset "Axes Values" begin
