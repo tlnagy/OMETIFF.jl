@@ -60,9 +60,14 @@ function load(io::Stream{format"OMETIFF"})
         masteraxis = copy(axeslist[1])
         masteraxis[6] = Axis{:position}(to_symbol.(pos_names))
         axeslist = [masteraxis]
+    else
+        throw(FileIO.LoaderError("OMETIFF", "Different sized axes across images is not currently supported."))
     end
 
-    inmemoryarray(ifd_index, ifds, master_dims, masteraxis, master_rawtype, mappedtype)
+    elapsed_times = get_elapsed_times(containers, master_dims, masteraxis)
+
+    img = inmemoryarray(ifd_index, ifds, master_dims, masteraxis, master_rawtype, mappedtype)
+    ImageMeta(img, Description=summary, Elapsed_Times=elapsed_times)
 end
 
 """
@@ -108,7 +113,7 @@ function inmemoryarray(ifd_index::Array{Union{NTuple{4, Int}, Nothing}},
     unused_dims = Tuple(idx for (idx, key) in enumerate(keys(master_dims)) if master_dims[idx] == 1)
     squeezed_data = dropdims(data; dims=unused_dims)
     used_axes = [masteraxis[i] for i in 1:length(masteraxis) if !(i in unused_dims)]
-    ImageMeta(AxisArray(squeezed_data, used_axes...), Summary=summary)
+    AxisArray(squeezed_data, used_axes...)
 end
 
 """Corresponding Julian types for OME-XML types"""
