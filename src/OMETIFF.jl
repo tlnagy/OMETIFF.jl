@@ -10,7 +10,7 @@ using EzXML
 using FileIO
 using JSON
 using ImageMetadata
-using Images
+using ImageShow
 
 include("utils.jl")
 include("files.jl")
