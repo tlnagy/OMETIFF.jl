@@ -102,8 +102,7 @@ function get_unitful_axis(image::EzXML.Node, dimsize::Int, stepsize::String, uni
 
         # This is an ugly hack to convert the unit string into Unitful.Unit till
         # https://github.com/PainterQubits/Unitful.jl/issues/214 gets fixed
-        unitstr = replace(image[units], "u" => "μ")
-        unittype = @eval @u_str $unitstr
+        unittype = @eval @u_str $(image[units])
 
         # Create a unitful range
         return 0*unittype:increment*unittype:increment*(dimsize-1)*unittype
