@@ -149,3 +149,8 @@ end
 @testset "Error checks" begin
     @test_throws FileIO.LoaderError load(File(format"OMETIFF", joinpath("testdata", "nonometif.tif")))
 end
+
+@testset "OMEXML dump test" begin
+    expected = """<OME xmlns=\"http://www.openmicroscopy.org/Schemas/OME/2016-06\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" Creator=\"OME Bio-Formats 5.2.2\" UUID=\"urn:uuid:2bc2aa39-30d2-44ee-8399-c513492dd5de\" xsi:schemaLocation=\"http://www.openmicroscopy.org/Schemas/OME/2016-06 http://www.openmicroscopy.org/Schemas/OME/2016-06/ome.xsd\">\n  <Image ID=\"Image:0\" Name=\"single-channel.ome.tif\">\n    <Pixels BigEndian=\"true\" DimensionOrder=\"XYZCT\" ID=\"Pixels:0\" SizeC=\"1\" SizeT=\"1\" SizeX=\"439\" SizeY=\"167\" SizeZ=\"1\" Type=\"int8\">\n      <Channel ID=\"Channel:0:0\" SamplesPerPixel=\"1\">\n        <LightPath/>\n      </Channel>\n      <TiffData FirstC=\"0\" FirstT=\"0\" FirstZ=\"0\" IFD=\"0\" PlaneCount=\"1\">\n        <UUID FileName=\"single-channel.ome.tif\">urn:uuid:2bc2aa39-30d2-44ee-8399-c513492dd5de</UUID>\n      </TiffData>\n    </Pixels>\n  </Image>\n</OME>"""
+    @test OMETIFF.dump_omexml(joinpath("testdata", "singles", "single-channel.ome.tif")) == expected
+end

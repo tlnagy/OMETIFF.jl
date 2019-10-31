@@ -74,3 +74,26 @@ And data, a 5×5 Array{Gray{N0f16},2} with eltype Gray{Normed{UInt16,16}}
     Elapsed_Times: Quantity{Float64,𝐓,Unitful.FreeUnits{(s,),𝐓,nothing}}[2.525 s 3.35 s 5.638 s 6.534 s; 15.398 s 16.195 s 18.743 s 19.506 s; … ; 390.389 s 391.154 s 393.282 s 393.984 s; 405.391 s 406.13 s 408.316 s 409.101 s]
     Description: nd4 + nd8 in
 ```
+
+### Dumping embedded OME-XML
+
+To quickly access the OME-XML stored inside a TIFF file, use the
+`OMETIFF.dump_omexml` function:
+
+```julia
+julia> using OMETIFF
+
+julia> println(OMETIFF.dump_omexml("test/testdata/singles/single-channel.ome.tif"))
+<OME xmlns="http://www.openmicroscopy.org/Schemas/OME/2016-06" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Creator="OME Bio-Formats 5.2.2" UUID="urn:uuid:2bc2aa39-30d2-44ee-8399-c513492dd5de" xsi:schemaLocation="http://www.openmicroscopy.org/Schemas/OME/2016-06 http://www.openmicroscopy.org/Schemas/OME/2016-06/ome.xsd">
+  <Image ID="Image:0" Name="single-channel.ome.tif">
+    <Pixels BigEndian="true" DimensionOrder="XYZCT" ID="Pixels:0" SizeC="1" SizeT="1" SizeX="439" SizeY="167" SizeZ="1" Type="int8">
+      <Channel ID="Channel:0:0" SamplesPerPixel="1">
+        <LightPath/>
+      </Channel>
+      <TiffData FirstC="0" FirstT="0" FirstZ="0" IFD="0" PlaneCount="1">
+        <UUID FileName="single-channel.ome.tif">urn:uuid:2bc2aa39-30d2-44ee-8399-c513492dd5de</UUID>
+      </TiffData>
+    </Pixels>
+  </Image>
+</OME>
+```
