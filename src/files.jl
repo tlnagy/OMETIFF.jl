@@ -52,12 +52,12 @@ end
 Load all the files and run through them all to find the offsets of each IFD.
 """
 function get_ifds(orig_file::TiffFile,
-                  ifd_files::Array{Union{Tuple{String, String}, Nothing}})
+                  ifd_index::OrderedDict{Int, NTuple{4, Int}},
+                  ifd_files::OrderedDict{Int, Tuple{String, String}})
 
     # open all files referenced by the tiffdatas
     files = Dict{Tuple{String, String}, TiffFile}()
-    for item in unique(ifd_files)
-        (item == nothing) && continue
+    for item in unique(values(ifd_files))
         filepath = joinpath(dirname(orig_file.filepath), item[2])
 
         # if this file is the same as the base file, then don't open it again
@@ -70,16 +70,18 @@ function get_ifds(orig_file::TiffFile,
         end
     end
 
-    ifds = Array{Union{IFD, Nothing}}(nothing, length(ifd_files))
+    ifds = OrderedDict{NTuple{4, Int}, IFD}()
 
     for (fileid, file) in files
+        # iterate over the file and find all stored offsets for IFDs
         ifd_offsets = collect(file)
-
+        
         ifd_idx_in_file = 0
-        for (idx, ifd_file) in enumerate(ifd_files)
-            (ifd_file == nothing) && continue
+        for ifd in sort(collect(keys(ifd_index)))
+            ifd_file = ifd_files[ifd]
+
             if ifd_file == fileid
-                ifds[idx] = IFD(file, ifd_offsets[ifd_idx_in_file+=1])
+                ifds[ifd_index[ifd]] = IFD(file, ifd_offsets[ifd_idx_in_file+=1])
             end
         end
     end

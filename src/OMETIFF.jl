@@ -11,6 +11,7 @@ using FileIO
 using JSON
 using ImageMetadata
 using ImageShow
+using DataStructures
 
 include("utils.jl")
 include("files.jl")

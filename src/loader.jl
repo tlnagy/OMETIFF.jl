@@ -28,45 +28,56 @@ function load(io::Stream{format"OMETIFF"})
     mappedtype = Int64
     dimlist = []
     axeslist = []
-    n_ifds = 0
 
     for (idx, container) in enumerate(containers)
         dims, axes_info = build_axes(container)
         push!(dimlist, dims)
         push!(axeslist, axes_info)
-        n_ifds += dims[:Z]*dims[:C]*dims[:T]
         rawtype, mappedtype = type_mapping[container["Type"]]
 
-        if master_rawtype == nothing
+        if master_rawtype === nothing
             master_rawtype = rawtype
         elseif master_rawtype != rawtype
             throw(FileIO.LoaderError("OMETIFF", "Multiple different storage types are not yet support in a multi position image"))
         end
     end
 
-    ifd_index = Array{Union{NTuple{4, Int}, Nothing}}(nothing, n_ifds)
-    ifd_files = Array{Union{Tuple{String, String}, Nothing}}(nothing, n_ifds)
+    ifd_indices = OrderedDict{Int, NTuple{4, Int}}()
+    ifd_files = OrderedDict{Int, Tuple{String, String}}()
     obs_filepaths = Set{String}()
     for (idx, container) in enumerate(containers)
-        OMETIFF.ifdindex!(ifd_index, ifd_files, obs_filepaths, container, dimlist[idx], "", idx)
+        OMETIFF.ifdindex!(ifd_indices, ifd_files, obs_filepaths, container, dimlist[idx], "", idx)
     end
-    @assert length(ifd_index) == length(ifd_files)
 
-    files, ifds = get_ifds(orig_file, ifd_files)
+    files, ifds = get_ifds(orig_file, ifd_indices, ifd_files)
 
-    if length(unique(dimlist)) == 1
-        master_dims = merge(unique(dimlist)[1], [:P=>length(containers)])
-        dimlist = [master_dims]
-        masteraxis = copy(axeslist[1])
-        masteraxis[6] = Axis{:position}(to_symbol.(pos_names))
-        axeslist = [masteraxis]
-    else
-        throw(FileIO.LoaderError("OMETIFF", "Different sized axes across images is not currently supported."))
+    # determine size of all the dims from the ifds in the tiff file instead
+    # of the sizes embedded in the Pixel node
+    true_dims = [Set{Int}() for i in 1:4]
+    for ifd_index in keys(ifds), dim in 1:4
+        push!(true_dims[dim], ifd_index[dim])
+    end
+
+    # generate new master dim list with the true dims from above
+    master_dims = dimlist[1]
+    dimnames = keys(master_dims)[3:6]
+    new_data = [dimnames[i]=>length(true_dims[i]) for i in 1:4]
+    master_dims = merge(master_dims, new_data)
+
+    masteraxis = copy(axeslist[1])
+    masteraxis[6] = Axis{:position}(OMETIFF.to_symbol.(pos_names))
+
+    # check if the axes computed earlier are the correct length, if not,
+    # we're not sure about the information through the whole movie so lets
+    # strip the units
+    err_axes = findall(length.(masteraxis) .!== values(master_dims))
+    for ax in err_axes
+        masteraxis[ax] = masteraxis[ax](1:master_dims[ax])
     end
 
     elapsed_times = get_elapsed_times(containers, master_dims, masteraxis)
 
-    img = inmemoryarray(ifd_index, ifds, master_dims, masteraxis, master_rawtype, mappedtype)
+    img = inmemoryarray(ifds, master_dims, masteraxis, master_rawtype, mappedtype)
     ImageMeta(img, Description=summary, Elapsed_Times=elapsed_times)
 end
 
@@ -93,8 +104,7 @@ end
 Builds an in-memory high-dimensional image from the list of IFDs, `ifds`, and
 the corresponding indices, `ifd_index`, in the high-dimensional array.
 """
-function inmemoryarray(ifd_index::Array{Union{NTuple{4, Int}, Nothing}},
-                       ifds::Array{Union{IFD, Nothing}},
+function inmemoryarray(ifds::OrderedDict{NTuple{4, Int}, IFD},
                        master_dims::NamedTuple,
                        masteraxis::Array{Axis},
                        master_rawtype::Type,
@@ -103,10 +113,7 @@ function inmemoryarray(ifd_index::Array{Union{NTuple{4, Int}, Nothing}},
     data = Array{master_rawtype, length(master_dims)}(undef, master_dims...)
 
     # iterate over each IFD
-    for idx in 1:length(ifd_index)
-        indices = ifd_index[idx]
-        ifd = ifds[idx]
-        (ifd == nothing) && continue
+    for (indices, ifd) in ifds
 
         width, height = master_dims[:X], master_dims[:Y]
 

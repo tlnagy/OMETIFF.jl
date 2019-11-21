@@ -27,8 +27,8 @@ corresponding to the index of the current image in the OME-TIFF file.
 When we read the `TiffFile` we'll know what indices in the 6D matrix each IFD
 belongs to.
 """
-function ifdindex!(ifd_index::Array{Union{NTuple{4, Int}, Nothing}},
-                   ifd_files::Array{Union{Tuple{String, String}, Nothing}},
+function ifdindex!(ifd_index::OrderedDict{Int, NTuple{4, Int}},
+                   ifd_files::OrderedDict{Int, Tuple{String, String}},
                    obs_filepaths::Set{String},
                    image::EzXML.Node,
                    dims::NamedTuple,
@@ -74,7 +74,7 @@ function ifdindex!(ifd_index::Array{Union{NTuple{4, Int}, Nothing}},
             # reverse iterate since we cycle the inner dimension the most
             for k=1:dims[5], j=1:dims[4], i=1:dims[3]
                 ifd_index[idx] = (i, j, k, imageidx)
-                ifd_files[idx] = nothing
+
                 # if this tiffdata applies to multiple ifds then check that we
                 # don't exceed the specified number of ifds
                 (p > 1 && idx >= p+ifd-1) && break
