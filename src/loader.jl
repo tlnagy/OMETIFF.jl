@@ -101,28 +101,39 @@ function dump_omexml(filepath::String)
 end
 
 """
-Builds an in-memory high-dimensional image from the list of IFDs, `ifds`, and
-the corresponding indices, `ifd_index`, in the high-dimensional array.
+    inmemoryarray(ifds, dims, axes, rawtype, mappedtype)
+
+Builds an in-memory high-dimensional image using the mapping provided by `ifds`
+from indices to [`OMETIFF.IFD`](@ref) objects. The IFD objects store handles to
+the file objects and the offsets for the data. `dims` stores the size of each
+named dimension. The `rawtype` parameter describes the storage layout of each
+element on disk and `mappedtype` is the corresponding fixed or floating point
+type.
 """
 function inmemoryarray(ifds::OrderedDict{NTuple{4, Int}, IFD},
-                       master_dims::NamedTuple,
-                       masteraxis::Array{Axis},
-                       master_rawtype::Type,
+                       dims::NamedTuple,
+                       axes::Array{Axis},
+                       rawtype::Type,
                        mappedtype::Type)
 
-    data = Array{master_rawtype, length(master_dims)}(undef, master_dims...)
+    data = Array{rawtype, length(dims)}(undef, dims...)
+
+    height, width = dims[1], dims[2]
+    # assume no strips
+    tmp = Array{rawtype}(undef, height, width)
 
     # iterate over each IFD
     for (indices, ifd) in ifds
 
-        width, height = master_dims[:X], master_dims[:Y]
-
         n_strips = length(ifd.strip_offsets)
         strip_len = floor(Int, (width * height) / n_strips)
-        read_dims = n_strips > 1 ? (strip_len) : (height, width)
 
-        # TODO: This shouldn't be allocated for each ifd
-        tmp = Array{master_rawtype}(undef, read_dims...)
+        # if the data is stripped and we haven't fix tmp's layout then lets make
+        # tmp equal to one strip.
+        if n_strips > 1 && size(tmp) != (strip_len, )
+            tmp = Array{rawtype}(undef, strip_len)
+        end
+
         for j in 1:n_strips
             seek(ifd.file.io, ifd.strip_offsets[j])
             read!(ifd.file.io, tmp)
@@ -136,9 +147,9 @@ function inmemoryarray(ifds::OrderedDict{NTuple{4, Int}, IFD},
     end
 
     data = reinterpret(Gray{mappedtype}, data)
-    unused_dims = Tuple(idx for (idx, key) in enumerate(keys(master_dims)) if master_dims[idx] == 1)
+    unused_dims = Tuple(idx for (idx, key) in enumerate(keys(dims)) if dims[idx] == 1)
     squeezed_data = dropdims(data; dims=unused_dims)
-    used_axes = [masteraxis[i] for i in 1:length(masteraxis) if !(i in unused_dims)]
+    used_axes = [axes[i] for i in 1:length(axes) if !(i in unused_dims)]
     AxisArray(squeezed_data, used_axes...)
 end
 

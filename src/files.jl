@@ -75,7 +75,7 @@ function get_ifds(orig_file::TiffFile,
     for (fileid, file) in files
         # iterate over the file and find all stored offsets for IFDs
         ifd_offsets = collect(file)
-        
+
         ifd_idx_in_file = 0
         for ifd in sort(collect(keys(ifd_index)))
             ifd_file = ifd_files[ifd]
