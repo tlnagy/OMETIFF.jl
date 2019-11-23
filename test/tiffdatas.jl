@@ -1,11 +1,13 @@
 using EzXML
+using DataStructures
 
 # Tests for TiffData adapted from
 # https://docs.openmicroscopy.org/ome-model/5.5.4/ome-tiff/specification.html
 
 function get_result(ifd_index, ifd_files, dimlist)
     io = IOBuffer()
-    for (idx, ifd) in enumerate(ifd_index)
+    sort!(ifd_index)
+    for (idx, ifd) in ifd_index
         (ifd == nothing) && continue
         # get dimensions corresponding to the right image
         # the last index in ifd is position
@@ -17,18 +19,19 @@ end
 
 loc(dims, dimname) = findfirst(isequal(dimname), keys(dims))-2
 
-function get_ifds(fragment)
-    omexml = root(parsexml(wrap(fragment)))
+function get_ifds(fragment::String)
+    get_ifds(root(parsexml(wrap(fragment))))
+end
+
+function get_ifds(omexml::EzXML.Node)
     containers = findall("//*[@DimensionOrder]", omexml)
-    n_ifds = 0
     dimlist = []
     for container in containers
         dims, _ = OMETIFF.build_axes(container)
         push!(dimlist, dims)
-        n_ifds += dims[:Z]*dims[:C]*dims[:T]
     end
-    ifd_index = Array{Union{NTuple{4, Int}, Nothing}}(nothing, n_ifds)
-    ifd_files = Array{Union{Tuple{String, String}, Nothing}}(nothing, n_ifds)
+    ifd_index = OrderedDict{Int, NTuple{4, Int}}()
+    ifd_files = OrderedDict{Int, Tuple{String, String}}()
     obs_filepaths = Set{String}()
     for (idx, container) in enumerate(containers)
         OMETIFF.ifdindex!(ifd_index, ifd_files, obs_filepaths, container, dimlist[idx], "", idx)
@@ -196,8 +199,8 @@ end
 
     ifd_index, ifd_files, dimlist = get_ifds(fragment6)
 
-    @test all(ifd_index[1:4] .== [(1, 1, 1, 1), (1, 1, 2, 1), (1, 1, 3, 1), (1, 1, 4, 1)])
-    @test all(ifd_index[5:end] .== nothing)
+    @test all(map(i->ifd_index[i], 1:4) .== [(1, 1, 1, 1), (1, 1, 2, 1), (1, 1, 3, 1), (1, 1, 4, 1)])
+    @test length(ifd_index) .== 4
 end
 
 @testset "IFD Index Sharing" begin
@@ -225,5 +228,14 @@ end
 
     ifd_index, ifd_files, dimlist = get_ifds(fragment7)
 
-    @test all(ifd_index .== [(1, 1, 1, 1), (1, 1, 2, 1), (1, 1, 3, 1), (1, 1, 4, 1), (1, 1, 5, 1)])
+    @test all(collect(values(ifd_index)) .== [(1, 1, 1, 1), (1, 1, 2, 1), (1, 1, 3, 1), (1, 1, 4, 1), (1, 1, 5, 1)])
+end
+
+@testset "Issue 38" begin
+    filepath = joinpath("testdata", "issues", "issue38.ome.xml")
+    ifd_index, ifd_files, dimlist = get_ifds(root(readxml(filepath)))
+
+    # there are actually 274 IFDs in this OME-XML, not the expected 260 based on
+    # the header, make sure the parser detects this correctly
+    @test length(ifd_index) == 274
 end
