@@ -19,15 +19,16 @@ end
 
 loc(dims, dimname) = findfirst(isequal(dimname), keys(dims))-2
 
-function get_ifds(fragment)
-    omexml = root(parsexml(wrap(fragment)))
+function get_ifds(fragment::String)
+    get_ifds(root(parsexml(wrap(fragment))))
+end
+
+function get_ifds(omexml::EzXML.Node)
     containers = findall("//*[@DimensionOrder]", omexml)
-    n_ifds = 0
     dimlist = []
     for container in containers
         dims, _ = OMETIFF.build_axes(container)
         push!(dimlist, dims)
-        n_ifds += dims[:Z]*dims[:C]*dims[:T]
     end
     ifd_index = OrderedDict{Int, NTuple{4, Int}}()
     ifd_files = OrderedDict{Int, Tuple{String, String}}()
@@ -228,4 +229,13 @@ end
     ifd_index, ifd_files, dimlist = get_ifds(fragment7)
 
     @test all(collect(values(ifd_index)) .== [(1, 1, 1, 1), (1, 1, 2, 1), (1, 1, 3, 1), (1, 1, 4, 1), (1, 1, 5, 1)])
+end
+
+@testset "Issue 38" begin
+    filepath = joinpath("testdata", "issues", "issue38.ome.xml")
+    ifd_index, ifd_files, dimlist = get_ifds(root(readxml(filepath)))
+
+    # there are actually 274 IFDs in this OME-XML, not the expected 260 based on
+    # the header, make sure the parser detects this correctly
+    @test length(ifd_index) == 274
 end
