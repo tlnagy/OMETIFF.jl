@@ -146,6 +146,17 @@ end
     end
 end
 
+@testset "Loader arguments" begin
+    # verify that disabling dropping unused dimensions works as expected
+    @testset "Drop unused dimensions" begin
+        open(joinpath("testdata", "multiples", "companion", "multifile-Z1.ome.tiff")) do f
+            s = Stream(format"OMETIFF", f, OMETIFF.extract_filename(f))
+            img = OMETIFF.load(s, dropunused=false)
+            @test size(img) == (24, 18, 1, 1, 5, 1)
+        end
+    end
+end
+
 @testset "Error checks" begin
     @test_throws FileIO.LoaderError load(File(format"OMETIFF", joinpath("testdata", "nonometif.tif")))
 end

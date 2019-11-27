@@ -1,10 +1,16 @@
-function load(f::File{format"OMETIFF"})
+function load(f::File{format"OMETIFF"}; dropunused=true)
     open(f) do s
-        ret = load(s)
+        ret = load(s; dropunused=dropunused)
     end
 end
 
-function load(io::Stream{format"OMETIFF"})
+"""
+    load(io; dropunused)
+
+Load an OMETIFF file using the stream `io`. `dropunused` controls whether
+dimensions of length 1 are dropped automatically (default) or not.
+"""
+function load(io::Stream{format"OMETIFF"}; dropunused=true)
     if io.filename != nothing && !occursin(".ome.tif", io.filename)
         throw(FileIO.LoaderError("OMETIFF", "Not an OME TIFF file!"))
     end
@@ -77,8 +83,18 @@ function load(io::Stream{format"OMETIFF"})
 
     elapsed_times = get_elapsed_times(containers, master_dims, masteraxis)
 
-    img = inmemoryarray(ifds, master_dims, masteraxis, master_rawtype, mappedtype)
-    ImageMeta(img, Description=summary, Elapsed_Times=elapsed_times)
+    img = inmemoryarray(ifds, master_dims, master_rawtype, mappedtype)
+
+    # find dimensions of length 1 and remove them
+    if dropunused
+        unused_dims = findall(values(master_dims) .== 1)
+        img = dropdims(img; dims=tuple(unused_dims...))
+        deleteat!(masteraxis, unused_dims)
+    end
+
+    ImageMeta(AxisArray(img, masteraxis...),
+              Description=summary,
+              Elapsed_Times=elapsed_times)
 end
 
 """
@@ -101,7 +117,7 @@ function dump_omexml(filepath::String)
 end
 
 """
-    inmemoryarray(ifds, dims, axes, rawtype, mappedtype)
+    inmemoryarray(ifds, dims, rawtype, mappedtype) -> Array
 
 Builds an in-memory high-dimensional image using the mapping provided by `ifds`
 from indices to [`OMETIFF.IFD`](@ref) objects. The IFD objects store handles to
@@ -112,7 +128,6 @@ type.
 """
 function inmemoryarray(ifds::OrderedDict{NTuple{4, Int}, IFD},
                        dims::NamedTuple,
-                       axes::Array{Axis},
                        rawtype::Type,
                        mappedtype::Type)
 
@@ -146,11 +161,7 @@ function inmemoryarray(ifds::OrderedDict{NTuple{4, Int}, IFD},
         end
     end
 
-    data = reinterpret(Gray{mappedtype}, data)
-    unused_dims = Tuple(idx for (idx, key) in enumerate(keys(dims)) if dims[idx] == 1)
-    squeezed_data = dropdims(data; dims=unused_dims)
-    used_axes = [axes[i] for i in 1:length(axes) if !(i in unused_dims)]
-    AxisArray(squeezed_data, used_axes...)
+    reinterpret(Gray{mappedtype}, data)
 end
 
 """Corresponding Julian types for OME-XML types"""
