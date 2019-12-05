@@ -17,15 +17,28 @@ function getattribute(tiffdata::EzXML.Node, ::Type{Float64}, attr::String)
 end
 
 """
-    ifdindex!(ifds, image, dims, imageidx)
+    $(SIGNATURES)
 
-Update the master ifd index list, `ifds`, using the TiffData's in `image`.
-`dims` is a NamedTuple of the size of each dimension of `image` in the order
-specified by the `DimensionOrder` parameter. `imageidx` is positive integer
-corresponding to the index of the current image in the OME-TIFF file.
+OMEXML is [very
+flexible](https://docs.openmicroscopy.org/ome-model/6.0.1/ome-tiff/specification.html#fragment-1)
+with its representation of the IFDs in the TIFF image. This function attempts to
+handle many of the exceptions and update the passed collections with the proper
+mapping of which TiffData elements correspond to which IFDs (and which files
+these IFDs are located in) inside the TIFF image.
 
-When we read the `TiffFile` we'll know what indices in the 6D matrix each IFD
-belongs to.
+**Arguments**
+- `ifd_index::OrderedDict{Int, NTuple{4, Int}}`: A mapping from IFD number to
+  dimensions
+- `ifd_files::OrderedDict{Int, Tuple{String, String}}`: A mapping from IFD
+  number to the filepath and UUID of the file it's located in
+- `obs_filepaths::Set{String}`: A list of observed filepaths
+- `image::EzXML.Node`: The OMEXML rooted at the current position
+- `dims::NamedTuple`: Sizes of each dimension with the names as keys
+- `filepath::String`: The path of root file
+- `posidx::Int`: The index of the current position
+
+The first two parameters should be then pumped through
+[`OMETIFF.get_ifds`](@ref)
 """
 function ifdindex!(ifd_index::OrderedDict{Int, NTuple{4, Int}},
                    ifd_files::OrderedDict{Int, Tuple{String, String}},
@@ -33,7 +46,7 @@ function ifdindex!(ifd_index::OrderedDict{Int, NTuple{4, Int}},
                    image::EzXML.Node,
                    dims::NamedTuple,
                    filepath::String,
-                   imageidx::Int)
+                   posidx::Int)
 
     tiffdatas = findall(".//ns:TiffData", image, ["ns"=>namespace(image)])
 
@@ -73,7 +86,7 @@ function ifdindex!(ifd_index::OrderedDict{Int, NTuple{4, Int}},
             idx = ifd
             # reverse iterate since we cycle the inner dimension the most
             for k=1:dims[5], j=1:dims[4], i=1:dims[3]
-                ifd_index[idx] = (i, j, k, imageidx)
+                ifd_index[idx] = (i, j, k, posidx)
 
                 # if this tiffdata applies to multiple ifds then check that we
                 # don't exceed the specified number of ifds
@@ -82,7 +95,7 @@ function ifdindex!(ifd_index::OrderedDict{Int, NTuple{4, Int}},
             end
         # if any of the indices are specified in the tiffdata then use these
         else
-            indices = (indices..., imageidx) # add the position index
+            indices = (indices..., posidx) # add the position index
             # all the indices that are not specified, we assume the first index
             ifd_index[ifd] = Tuple(pos > 0 ? pos : 1 for pos in indices)
         end
@@ -90,10 +103,10 @@ function ifdindex!(ifd_index::OrderedDict{Int, NTuple{4, Int}},
 end
 
 """
-    get_unitful_axis(image, dimsize, stepsize, units)
+    get_unitful_axis(image, dimsize, stepsize, units) -> Range
 
-Attempts to return a unitful axis with a length of `dimsize`. `stepsize` and
-`units` should be the XML tags in `image`.
+Attempts to return a unitful range with a length of `dimsize`. Parameters
+`stepsize` and `units` should be the XML tags in `image`.
 """
 function get_unitful_axis(image::EzXML.Node, dimsize::Int, stepsize::String, units::String)
     try
@@ -114,11 +127,23 @@ end
 
 
 const axis_name_mapping = (X = :x, Y = :y, Z=:z, T=:time, C=:channel, P=:position)
-"""
-    build_axes(omexml::EzXML.Node)
 
-Returns an array of ints with dimension sizes and an array of `AxisArrays.Axis`
-objects both in XYZCT order given the Pixels node of the OME-XML document
+"""
+    build_axes(image) -> Tuple, Vector
+
+Extracts the dimensions and axis information from the OMEXML data.
+
+**Output**
+- `NamedTuple{order, NTuple{6, Int}}`: the labeled 6 dimensions in the `order`
+  that they are specified in the OMEXML.
+- `Vector{AxisArray.Axis}`: List of `AxisArray.Axis` objects with units (if
+  possible) in the same `order` as above
+
+!!! warning
+    There's no guarantee that the dimension sizes extracted here are correct if
+    the acquisition was cancelled during a multiposition session. See
+    [#38](https://github.com/tlnagy/OMETIFF.jl/issues/38). Downstream functions
+    should be flexible and handle these cases.
 """
 function build_axes(image::EzXML.Node)
     order = "YX"*join(replace(split(image["DimensionOrder"], ""), "X"=>"", "Y"=>""))
@@ -148,7 +173,7 @@ end
 
 
 """
-    get_elapsed_times(containers, master_dims, masteraxis; default_unit)
+    $(SIGNATURES) -> AxisArray
 
 Extracts the actual acquisition times from the OME-XML data. Takes `containers`, a vector of the XML nodes
 corresponding to the root of each image.

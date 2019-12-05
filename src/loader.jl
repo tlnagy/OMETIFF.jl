@@ -5,7 +5,7 @@ function load(f::File{format"OMETIFF"}; dropunused=true)
 end
 
 """
-    load(io; dropunused)
+    load(io; dropunused) -> ImageMetadata.ImageMeta
 
 Load an OMETIFF file using the stream `io`. `dropunused` controls whether
 dimensions of length 1 are dropped automatically (default) or not.
