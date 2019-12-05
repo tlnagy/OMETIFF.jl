@@ -246,9 +246,7 @@ end
 
 function do_bswap(file::TiffFile, values::AbstractArray)
     if file.need_bswap
-        for i in 1:length(values)
-            values[i] = bswap(values[i])
-        end
+        values .= bswap.(values)
     end
     values
 end
