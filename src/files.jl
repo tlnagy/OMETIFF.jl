@@ -117,6 +117,24 @@ function load_master_xml(file::TiffFile)
     end
 end
 
+"""
+    dump_omexml(filepath)
+
+Returns the OME-XML embedded inside the OME-TIFF as a prettified string.
+"""
+function dump_omexml(filepath::String)
+    if !endswith(filepath, ".ome.tif")
+        error("Passed file is not an OME-TIFF")
+    end
+    io = IOBuffer()
+    open(filepath) do f
+        s = Stream(format"OMETIFF", f, OMETIFF.extract_filename(f))
+        orig_file = OMETIFF.TiffFile(s)
+        omexml = OMETIFF.load_master_xml(orig_file)
+        prettyprint(io, omexml)
+    end
+    String(take!(io))
+end
 
 Base.eltype(::Type{TiffFile}) = Vector{Int}
 Base.IteratorSize(::Type{TiffFile}) = Base.SizeUnknown()
