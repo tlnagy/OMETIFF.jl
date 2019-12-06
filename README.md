@@ -1,8 +1,8 @@
 # OMETIFF.jl
 
-| Master Status  | Code coverage  |
-|:--|:--|
-| [![Build Status](https://travis-ci.org/tlnagy/OMETIFF.jl.svg?branch=master)](https://travis-ci.org/tlnagy/OMETIFF.jl)  | [![codecov.io](http://codecov.io/github/tlnagy/OMETIFF.jl/coverage.svg?branch=master)](http://codecov.io/github/tlnagy/OMETIFF.jl?branch=master)  |
+| **Documentation**                 | **Build Status**                                              |
+|:----------------------------------|:--------------------------------------------------------------|
+| [![][docs-dev-img]][docs-dev-url] | [![][status-img]][status-url] [![][travis-img]][travis-url] [![][codecov-img]][codecov-url] |
 
 Adds support for reading OME-TIFF files to the [Images.jl](https://github.com/JuliaImages/Images.jl)
 platform. Allows fast and easy interfacing with high-dimensional data with nice
@@ -97,3 +97,16 @@ julia> println(OMETIFF.dump_omexml("test/testdata/singles/single-channel.ome.tif
   </Image>
 </OME>
 ```
+
+
+[docs-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
+[docs-dev-url]: https://tamasnagy.com/OMETIFF.jl/dev
+
+[travis-img]: https://travis-ci.org/tlnagy/OMETIFF.jl.svg?branch=master
+[travis-url]: https://travis-ci.org/tlnagy/OMETIFF.jl
+
+[codecov-img]: https://codecov.io/gh/tlnagy/OMETIFF.jl/branch/master/graph/badge.svg
+[codecov-url]: https://codecov.io/gh/tlnagy/OMETIFF.jl
+
+[status-img]: https://www.repostatus.org/badges/latest/active.svg
+[status-url]: https://www.repostatus.org/#active
