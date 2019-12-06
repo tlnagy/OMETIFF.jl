@@ -13,4 +13,5 @@ makedocs(
 
 deploydocs(
     repo = "github.com/tlnagy/OMETIFF.jl.git",
+    push_preview=true
 )
