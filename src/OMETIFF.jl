@@ -12,6 +12,7 @@ using JSON
 using ImageMetadata
 using ImageShow
 using DataStructures
+using DocStringExtensions
 
 include("utils.jl")
 include("files.jl")

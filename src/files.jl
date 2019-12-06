@@ -1,3 +1,10 @@
+"""
+    TiffFile(io) -> TiffFile
+
+Wrap `io` with helper parameters to keep track of file attributes.
+
+$(FIELDS)
+"""
 mutable struct TiffFile
     """A unique ID describing this file that is embedded in the XML"""
     uuid::String
@@ -5,6 +12,7 @@ mutable struct TiffFile
     """The relative path to this file"""
     filepath::String
 
+    """The file stream"""
     io::Union{Stream, IOStream}
 
     """Location of the first IFD in the file stream"""
@@ -39,6 +47,15 @@ function TiffFile(uuid::String, filepath::String)
     end
 end
 
+"""
+    IFD(file, strip_offsets) -> IFD
+
+Build an Image File Directory (IFD), i.e. a TIFF slice. This structure retains a
+pointer to its parent file and a list of the offsets within the file
+corresponding to the data strips.
+
+$(FIELDS)
+"""
 struct IFD
     """Pointer to the file containing this IFD"""
     file::TiffFile
@@ -48,8 +65,19 @@ struct IFD
 end
 
 """
+    get_ifds(orig_file, ifd_index, ifd_files) -> Dict, Dict
 
-Load all the files and run through them all to find the offsets of each IFD.
+Run through all the IFDs extracted from the OMEXML and open all the referenced
+files to construct a mapping of ZCTP (not guaranteed order) index to IFD object.
+This is necessary because there can be multiple files referenced in a single
+OMEXML and we need to iterate over the files to identify the actual offsets for
+the data since this information isn't found in the OMEXML.
+
+**Output**
+- `Dict{Tuple{String, String}, TiffFile}`: a mapping of filepath, UUID to the
+   actual TiffFile object
+- `OrderedDict{NTuple{4, Int}, IFD}`: a mapping of ZCTP (or other order) index
+   to the IFD objects in order that the IFDs are referenced in the OMEXML
 """
 function get_ifds(orig_file::TiffFile,
                   ifd_index::OrderedDict{Int, NTuple{4, Int}},
@@ -89,7 +117,7 @@ function get_ifds(orig_file::TiffFile,
 end
 
 """
-    load_master_xml(file::TiffFile)
+    load_master_xml(file::TiffFile) -> EzXML.doc
 
 Loads the master OME-XML file from `file` or from a linked file.
 """
@@ -117,17 +145,50 @@ function load_master_xml(file::TiffFile)
     end
 end
 
+"""
+    dump_omexml(filepath) -> String
+
+Returns the OME-XML embedded inside the OME-TIFF as a prettified string.
+"""
+function dump_omexml(filepath::String)
+    if !endswith(filepath, ".ome.tif")
+        error("Passed file is not an OME-TIFF")
+    end
+    io = IOBuffer()
+    open(filepath) do f
+        s = Stream(format"OMETIFF", f, OMETIFF.extract_filename(f))
+        orig_file = OMETIFF.TiffFile(s)
+        omexml = OMETIFF.load_master_xml(orig_file)
+        prettyprint(io, omexml)
+    end
+    String(take!(io))
+end
 
 Base.eltype(::Type{TiffFile}) = Vector{Int}
 Base.IteratorSize(::Type{TiffFile}) = Base.SizeUnknown()
 
+"""
+    iterate(file) -> Vector
+
+Initializes the iterator over all IFDs in a TIFF file. This is necessary to find
+the offsets for all data strips in the file, which is not stored in the OME-XML and
+can only be determined by visiting each IFD.
+
+**Output**
+- `Vector{Int}`: Offsets within file for all strips corresponding to the current
+   IFD
+"""
 Base.iterate(file::TiffFile) = iterate(file, (read_ifd(file, file.first_offset)))
 
 """
-    iterate(file, state)
+    iterate(file, state) -> Vector, Int
 
-Given a `state`, returns a tuple with list of locations of the data strips corresponding to
-that IFD in `file` and the updated state.
+Advances the iterator to the next IFD.
+
+**Output**
+- `Vector{Int}`: Offsets within file for all strips corresponding to the current
+   IFD
+- `Int`: Offset of the next IFD
 """
 function Base.iterate(file::TiffFile, state::Tuple{Union{Vector{Int}, Nothing}, Int})
     strip_locs, ifd = state
@@ -142,6 +203,11 @@ end
 
 loadxml(file::TiffFile) = read_ifd(file, file.first_offset; getxml=true)
 
+"""
+    read_ifd(file, offset; getxml)
+
+Read the tags of the IFD located at `offset` in TiffFile `file`.
+"""
 function read_ifd(file::TiffFile, offset::Int; getxml=false)
     seek(file.io, offset)
 
@@ -206,7 +272,12 @@ function read_ifd(file::TiffFile, offset::Int; getxml=false)
     strip_offset_list, next_ifd
 end
 
+"""
+    load_comments(file) -> String
 
+Extracts the MicroManager embedded description, if present. Else returns an
+empty string.
+"""
 function load_comments(file)
     seek(file.io, 24)
     comment_header = Int(do_bswap(file, read(file.io, UInt32)))
@@ -226,11 +297,15 @@ function load_comments(file)
     metadata["Summary"]
 end
 
+"""
+    do_bswap(file, values) -> Array
+
+If the endianness of file is different than that of the current machine, swap
+the byte order.
+"""
 function do_bswap(file::TiffFile, values::AbstractArray)
     if file.need_bswap
-        for i in 1:length(values)
-            values[i] = bswap(values[i])
-        end
+        values .= bswap.(values)
     end
     values
 end

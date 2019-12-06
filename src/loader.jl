@@ -5,7 +5,7 @@ function load(f::File{format"OMETIFF"}; dropunused=true)
 end
 
 """
-    load(io; dropunused)
+    load(io; dropunused) -> ImageMetadata.ImageMeta
 
 Load an OMETIFF file using the stream `io`. `dropunused` controls whether
 dimensions of length 1 are dropped automatically (default) or not.
@@ -97,24 +97,6 @@ function load(io::Stream{format"OMETIFF"}; dropunused=true)
               Elapsed_Times=elapsed_times)
 end
 
-"""
-    dump_omexml(filepath)
-
-Returns the OME-XML embedded inside the OME-TIFF as a prettified string.
-"""
-function dump_omexml(filepath::String)
-    if !endswith(filepath, ".ome.tif")
-        error("Passed file is not an OME-TIFF")
-    end
-    io = IOBuffer()
-    open(filepath) do f
-        s = Stream(format"OMETIFF", f, OMETIFF.extract_filename(f))
-        orig_file = OMETIFF.TiffFile(s)
-        omexml = OMETIFF.load_master_xml(orig_file)
-        prettyprint(io, omexml)
-    end
-    String(take!(io))
-end
 
 """
     inmemoryarray(ifds, dims, rawtype, mappedtype) -> Array
@@ -164,12 +146,4 @@ function inmemoryarray(ifds::OrderedDict{NTuple{4, Int}, IFD},
     reinterpret(Gray{mappedtype}, data)
 end
 
-"""Corresponding Julian types for OME-XML types"""
-type_mapping = Dict(
-    "uint8" => (UInt8, N0f8),
-    "uint16" => (UInt16, N0f16),
-    "uint32" => (UInt32, N0f32),
-    "float" => (Float32, Float32),
-    "double" => (Float64, Float64),
-    "int8" => (Int8, N0f8)
-)
+

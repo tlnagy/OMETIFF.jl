@@ -1,7 +1,8 @@
 """
-    to_symbol(input::String)
+    to_symbol(input) -> String
 
-Cleans up `input` string and converts it into a symbol
+Cleans up `input` string and converts it into a symbol, needed so that channel
+names work with AxisArrays.
 """
 function to_symbol(input::String)
     fixed = replace(input, r"[^\w\ \-\_]"=>"")
@@ -11,9 +12,9 @@ end
 
 
 """
-    myendian()
+    myendian() -> UInt16
 
-Returns the TIFF endian byte order expected if its endianness matches the host's
+Returns the endianness of the host machine
 """
 function myendian()
     if ENDIAN_BOM == 0x04030201
@@ -42,7 +43,19 @@ function check_bswap(io::Union{Stream, IOStream})
 end
 
 """
+    extract_filename(io) -> String
+
 Extract the name of the file backing a stream
 """
 extract_filename(io::IOStream) = split(io.name, " ")[2][1:end-1]
 extract_filename(io::Stream) = io.filename
+
+"""Corresponding Julian types for OME-XML types"""
+type_mapping = Dict(
+    "uint8" => (UInt8, N0f8),
+    "uint16" => (UInt16, N0f16),
+    "uint32" => (UInt32, N0f32),
+    "float" => (Float32, Float32),
+    "double" => (Float64, Float64),
+    "int8" => (Int8, N0f8)
+)
