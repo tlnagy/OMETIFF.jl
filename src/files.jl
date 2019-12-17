@@ -300,6 +300,30 @@ function load_comments(file)
 end
 
 """
+    _read_ifd_data!(target, ifd, buffer)
+
+Reads the IFD `ifd` into `target` using a temporary buffer `buffer`. If the IFD
+is stripped, `buffer` must be 1-dimensional array, otherwise, it should be the
+same size as a `target`.
+"""
+function _read_ifd_data!(ifd::IFD, target::AbstractArray{T, 2}, buffer::AbstractArray{T, 1}) where {T}
+    n_strips = length(ifd.strip_offsets)
+
+    for j in 1:n_strips
+        seek(ifd.file.io, ifd.strip_offsets[j])
+        read!(ifd.file.io, buffer)
+        do_bswap(ifd.file, buffer)
+        view(target, j, :) .= buffer
+    end
+end
+
+function _read_ifd_data!(ifd::IFD, target::AbstractArray{T, 2}, buffer::AbstractArray{T, 2}) where {T}
+    seek(ifd.file.io, first(ifd.strip_offsets))
+    read!(ifd.file.io, buffer)
+    do_bswap(ifd.file, buffer)
+end
+
+"""
     do_bswap(file, values) -> Array
 
 If the endianness of file is different than that of the current machine, swap
