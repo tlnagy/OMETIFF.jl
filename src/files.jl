@@ -13,7 +13,7 @@ mutable struct TiffFile
     filepath::String
 
     """The file stream"""
-    io::Union{Stream, IOStream}
+    io::Stream
 
     """Location of the first IFD in the file stream"""
     first_offset::Int
@@ -21,7 +21,7 @@ mutable struct TiffFile
     """Whether this file has a different endianness than the host computer"""
     need_bswap::Bool
 
-    function TiffFile(io::Union{Stream, IOStream})
+    function TiffFile(io::Stream)
         file = new()
         file.io = io
         seekstart(io)
@@ -46,6 +46,8 @@ function TiffFile(uuid::String, filepath::String)
         "to load. See https://github.com/tlnagy/OMETIFF.jl/issues/14 for details."))
     end
 end
+
+TiffFile(io::IOStream) = TiffFile(Stream(format"OMETIFF", io, extract_filename(io)))
 
 """
     IFD(file, strip_offsets) -> IFD
