@@ -11,6 +11,8 @@ labeled axes provided by [AxisArrays.jl](https://github.com/JuliaImages/AxisArra
 ## Features
 
 - Can open a wide-range of OMETIFF files with a special focus on [correctness](https://github.com/tlnagy/OMETIFF.jl/blob/master/test/runtests.jl)
+- Supports memory-mapping to open large TIFF files quickly even on
+  memory-constrained machines
 - Spatial and temporal axes are annotated with units if available (like μm, s, etc)
 - Channel and position axes use their original names
 - Elapsed times are extracted and returned using the same labeled axes
