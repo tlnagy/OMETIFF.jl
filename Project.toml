@@ -18,7 +18,7 @@ Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [compat]
 AxisArrays = "0.3"
-Colors = "0.9, 0.10"
+Colors = "0.9, 0.10, 0.11"
 DataStructures = "0.17"
 DocStringExtensions = "0.8"
 EzXML = "0.9"
