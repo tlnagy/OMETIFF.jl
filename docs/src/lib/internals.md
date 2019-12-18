@@ -14,6 +14,7 @@ OMETIFF.dump_omexml
 ```@docs
 OMETIFF.IFD
 OMETIFF.TiffFile
+OMETIFF.ReadonlyTiffDiskArray
 ```
 
 ## Logic

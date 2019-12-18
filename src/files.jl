@@ -13,7 +13,7 @@ mutable struct TiffFile
     filepath::String
 
     """The file stream"""
-    io::Union{Stream, IOStream}
+    io::Stream
 
     """Location of the first IFD in the file stream"""
     first_offset::Int
@@ -21,7 +21,7 @@ mutable struct TiffFile
     """Whether this file has a different endianness than the host computer"""
     need_bswap::Bool
 
-    function TiffFile(io::Union{Stream, IOStream})
+    function TiffFile(io::Stream)
         file = new()
         file.io = io
         seekstart(io)
@@ -46,6 +46,8 @@ function TiffFile(uuid::String, filepath::String)
         "to load. See https://github.com/tlnagy/OMETIFF.jl/issues/14 for details."))
     end
 end
+
+TiffFile(io::IOStream) = TiffFile(Stream(format"OMETIFF", io, extract_filename(io)))
 
 """
     IFD(file, strip_offsets) -> IFD
@@ -295,6 +297,30 @@ function load_comments(file)
         return ""
     end
     metadata["Summary"]
+end
+
+"""
+    _read_ifd_data!(target, ifd, buffer)
+
+Reads the IFD `ifd` into `target` using a temporary buffer `buffer`. If the IFD
+is stripped, `buffer` must be 1-dimensional array, otherwise, it should be the
+same size as a `target`.
+"""
+function _read_ifd_data!(ifd::IFD, target::AbstractArray{T, 2}, buffer::AbstractArray{T, 1}) where {T}
+    n_strips = length(ifd.strip_offsets)
+
+    for j in 1:n_strips
+        seek(ifd.file.io, ifd.strip_offsets[j])
+        read!(ifd.file.io, buffer)
+        do_bswap(ifd.file, buffer)
+        view(target, j, :) .= buffer
+    end
+end
+
+function _read_ifd_data!(ifd::IFD, target::AbstractArray{T, 2}, buffer::AbstractArray{T, 2}) where {T}
+    seek(ifd.file.io, first(ifd.strip_offsets))
+    read!(ifd.file.io, buffer)
+    do_bswap(ifd.file, buffer)
 end
 
 """

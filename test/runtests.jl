@@ -155,6 +155,17 @@ end
             @test size(img) == (24, 18, 1, 1, 5, 1)
         end
     end
+    @testset "Memory mapping" begin
+        open(joinpath("testdata", "singles", "181003_multi_pos_time_course_1_MMStack.ome.tif")) do f
+            s = Stream(format"OMETIFF", f, OMETIFF.extract_filename(f))
+            img = OMETIFF.load(s, inmemory=false)
+            img2 = OMETIFF.load(s)
+            @test size(img) == (256, 256, 10, 2)
+            @test all(img[1:10,1,1,1] .== img2[1:10,1,1,1])
+            # file is read only and should throw an error if you try and modify it
+            @test_throws ErrorException img[1:10,1,1,1] .= 1.0
+        end
+    end
 end
 
 @testset "Error checks" begin
