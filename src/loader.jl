@@ -14,6 +14,16 @@ Load an OMETIFF file using the stream `io`.
   automatically (default) or not.
 - `inmemory::Bool`: controls whether arrays are fully loaded into memory
   (default) or left on disk and specific parts only loaded when accessed.
+
+!!! tip
+    The `inmemory=false` flag currently returns a read-only view of the data on
+    the disk for data integrity reasons. In order to modify the contents, you
+    must copy the data into an in-memory container--at least until
+    [#52](https://github.com/tlnagy/OMETIFF.jl/issues/52) is fixed--like so:
+
+    ```
+    copy(arr)
+    ```
 """
 function load(io::Stream{format"OMETIFF"}; dropunused=true, inmemory=true)
     if io.filename != nothing && !occursin(".ome.tif", io.filename)
