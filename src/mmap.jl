@@ -77,7 +77,7 @@ function Base.getindex(A::ReadonlyTiffDiskArray{Gray{T}, R, N1, N2}, i1::Int, i2
 end
 
 function Base.setindex!(A::ReadonlyTiffDiskArray{Gray{T}, R, N1, N2}, X, I...) where {T, R, N1, N2}
-   @error("This array is on disk and is read only. Convert to a mutable in-memory version by running "*
-        "`copy(arr)`. \n\n𝗡𝗼𝘁𝗲: For large files this can be quite expensive. A future PR will add "*
-        "support for reading and writing to/from disk.")
+    error("This array is on disk and is read only. Convert to a mutable in-memory version by running "*
+          "`copy(arr)`. \n\n𝗡𝗼𝘁𝗲: For large files this can be quite expensive. A future PR will add "*
+          "support for reading and writing to/from disk.")
 end
