@@ -1,14 +1,11 @@
 module OMETIFF
 
-__precompile__()
-
 using Unitful
 using AxisArrays
-using FixedPointNumbers
-using Colors
 using EzXML
 using FileIO
 using JSON
+using ImageCore
 using ImageMetadata
 using ImageShow
 using DataStructures
