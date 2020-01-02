@@ -2,7 +2,7 @@
 
 | **Documentation**                 | **Build Status**                                              |
 |:----------------------------------|:--------------------------------------------------------------|
-| [![][docs-dev-img]][docs-dev-url] | [![][status-img]][status-url] [![][travis-img]][travis-url] [![][codecov-img]][codecov-url] |
+| [![][docs-stable-img]][docs-stable-url] | [![][status-img]][status-url] [![][travis-img]][travis-url] [![][codecov-img]][codecov-url] |
 
 Adds support for reading OME-TIFF files to the [Images.jl](https://github.com/JuliaImages/Images.jl)
 platform. Allows fast and easy interfacing with high-dimensional data with nice
@@ -101,8 +101,8 @@ julia> println(OMETIFF.dump_omexml("test/testdata/singles/single-channel.ome.tif
 ```
 
 
-[docs-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
-[docs-dev-url]: https://tamasnagy.com/OMETIFF.jl/dev
+[docs-stable-img]: https://img.shields.io/badge/docs-stable-blue.svg
+[docs-stable-url]: https://tamasnagy.com/OMETIFF.jl/stable/
 
 [travis-img]: https://travis-ci.org/tlnagy/OMETIFF.jl.svg?branch=master
 [travis-url]: https://travis-ci.org/tlnagy/OMETIFF.jl
