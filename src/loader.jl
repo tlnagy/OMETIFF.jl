@@ -134,7 +134,7 @@ function inmemoryarray(ifds::OrderedDict{NTuple{4, Int}, IFD},
 
     data = Array{rawtype, length(dims)}(undef, dims...)
 
-    height, width = dims[1], dims[2]
+    width, height = dims[1], dims[2]
     # assume no strips
     tmp = Array{rawtype}(undef, height, width)
 
