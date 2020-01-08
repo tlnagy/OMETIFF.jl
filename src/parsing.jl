@@ -34,7 +34,7 @@ these IFDs are located in) inside the TIFF image.
 - `obs_filepaths::Set{String}`: A list of observed filepaths
 - `image::EzXML.Node`: The OMEXML rooted at the current position
 - `dims::NamedTuple`: Sizes of each dimension with the names as keys
-- `filepath::String`: The path of root file
+- `tifffile::TiffFile`: A pointer to the root file
 - `posidx::Int`: The index of the current position
 
 The first two parameters should be then pumped through
@@ -45,7 +45,7 @@ function ifdindex!(ifd_index::OrderedDict{Int, NTuple{4, Int}},
                    obs_filepaths::Set{String},
                    image::EzXML.Node,
                    dims::NamedTuple,
-                   filepath::String,
+                   tifffile::TiffFile,
                    posidx::Int)
 
     tiffdatas = findall(".//ns:TiffData", image, ["ns"=>namespace(image)])
@@ -63,8 +63,21 @@ function ifdindex!(ifd_index::OrderedDict{Int, NTuple{4, Int}},
 
         uuid_node = findfirst("./ns:UUID", tiffdata, ["ns"=>namespace(tiffdata)])
         if uuid_node != nothing
-            uuid = nodecontent(uuid_node)
-            filepath = joinpath(dirname(filepath), uuid_node["FileName"])
+            internal_filename = uuid_node["FileName"]
+
+            # if the root file has a UUID then lets keep track of TiffData
+            # locations using the UUIDs, otherwise lets using the internal filenames
+            if usingUUID(tifffile)
+                uuid = nodecontent(uuid_node)
+            else
+                # this is annoying but MicroManager doesn't appear to be
+                # consistent with embedding the file extension between
+                # Image@Name and TiffData/UUID@FileName so lets strip the
+                # extension here
+                uuid = reduce(replace, [".ome.tif" => "", "ome.tiff" => ""], init=internal_filename)
+            end
+            filepath = joinpath(dirname(tifffile.filepath), internal_filename)
+
             # if this file isn't one we've observed before, increment the offset
             if !in(filepath, obs_filepaths)
                 ifd = file_ifd_offset

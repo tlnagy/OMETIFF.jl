@@ -50,6 +50,16 @@ end
 TiffFile(io::IOStream) = TiffFile(Stream(format"OMETIFF", io, extract_filename(io)))
 
 """
+    usingUUID(tf) -> Bool
+
+Whether there was a UUID embedded in this file. According to the
+[schema](https://www.openmicroscopy.org/Schemas/Documentation/Generated/OME-2016-06/ome.html)
+UUIDs have the following pattern:
+`(urn:uuid:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})`
+"""
+usingUUID(tf::TiffFile) = isdefined(tf, :uuid) && startswith(tf.uuid, "urn:uuid:")
+
+"""
     IFD(file, strip_offsets) -> IFD
 
 Build an Image File Directory (IFD), i.e. a TIFF slice. This structure retains a
@@ -88,15 +98,19 @@ function get_ifds(orig_file::TiffFile,
     # open all files referenced by the tiffdatas
     files = Dict{Tuple{String, String}, TiffFile}()
     for item in unique(values(ifd_files))
-        filepath = joinpath(dirname(orig_file.filepath), item[2])
+        uuid, filepath = item
+
+        target_uuid = isdefined(orig_file, :uuid) ? orig_file.uuid : nothing
 
         # if this file is the same as the base file, then don't open it again
-        if filepath == orig_file.filepath
+        if uuid != nothing && uuid == target_uuid
             files[item] = orig_file
-            orig_file.uuid = item[1]
+        # if the UUID is missing or different, attempt to match on filepath
+        elseif filepath == orig_file.filepath
+            files[item] = orig_file
         # else open a new pointer to this file
         else
-            files[item] = TiffFile(item[1], filepath)
+            files[item] = TiffFile(uuid, filepath)
         end
     end
 
@@ -125,6 +139,16 @@ Loads the master OME-XML file from `file` or from a linked file.
 """
 function load_master_xml(file::TiffFile)
     omexml = loadxml(file)
+    # update the UUID of the file with the value from the OMEXML
+    uuid_node = findfirst("/ns:OME/@UUID", omexml, ["ns"=>namespace(omexml)])
+    if uuid_node != nothing
+        file.uuid = nodecontent(uuid_node)
+    else # if there isn't a UUID, there might still be an internal filename
+        internal_filename = findfirst("(//ns:Image | //ns:Pixels)[@Name]/@Name", omexml, ["ns"=>namespace(omexml)])
+        if internal_filename != nothing
+            file.uuid = nodecontent(internal_filename)
+        end
+    end
     try
         # Check if the full OME-XML metadata is stored in another file
         metadata_file = findfirst("/ns:OME/ns:BinaryOnly", omexml, ["ns"=>namespace(omexml)])

@@ -177,10 +177,30 @@ end
     @test OMETIFF.dump_omexml(joinpath("testdata", "singles", "single-channel.ome.tif")) == expected
 end
 
-@testset "Issue #60" begin
-    open(joinpath("testdata", "singles", "nonstriped_rect", "MMStack_Pos0.ome.tif")) do f
-        s = Stream(format"OMETIFF", f, OMETIFF.extract_filename(f))
-        img = OMETIFF.load(s)
-        @test size(img) == (2160, 2560, 8)
+@testset "Renaming files" begin
+    @testset "Tracking via UUID" begin
+        open(joinpath("testdata", "singles", "renamed_test", "renamed_uuids.ome.tif")) do f
+            s = Stream(format"OMETIFF", f, OMETIFF.extract_filename(f))
+            img = OMETIFF.load(s)
+            @test size(img) == (167, 439, 5, 7)
+        end
     end
+    @testset "Tracking via internal filenames" begin
+        open(joinpath("testdata", "singles", "renamed_test", "renamed_internalfilenames.ome.tif")) do f
+            s = Stream(format"OMETIFF", f, OMETIFF.extract_filename(f))
+            img = OMETIFF.load(s)
+            @test size(img) == (256, 256, 10, 2)
+        end
+    end
+end
+
+@testset "Issues" begin
+    @testset "Issue #60" begin
+        open(joinpath("testdata", "singles", "nonstriped_rect", "MMStack_Pos0.ome.tif")) do f
+            s = Stream(format"OMETIFF", f, OMETIFF.extract_filename(f))
+            img = OMETIFF.load(s)
+            @test size(img) == (2160, 2560, 8)
+        end
+    end
+
 end

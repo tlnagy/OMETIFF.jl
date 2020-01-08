@@ -34,7 +34,7 @@ function get_ifds(omexml::EzXML.Node)
     ifd_files = OrderedDict{Int, Tuple{String, String}}()
     obs_filepaths = Set{String}()
     for (idx, container) in enumerate(containers)
-        OMETIFF.ifdindex!(ifd_index, ifd_files, obs_filepaths, container, dimlist[idx], "", idx)
+        OMETIFF.ifdindex!(ifd_index, ifd_files, obs_filepaths, container, dimlist[idx], faketiff(), idx)
     end
     ifd_index, ifd_files, dimlist
 end
