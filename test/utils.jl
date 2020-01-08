@@ -7,3 +7,11 @@ wrap(content) = """
      http://www.openmicroscopy.org/Schemas/OME/2016-06/ome.xsd">
     $content
 </OME>"""
+
+function faketiff()
+    io = IOBuffer()
+    write(io, OMETIFF.myendian())
+    write(io, UInt16(42))
+    write(io, UInt32(8))
+    OMETIFF.TiffFile(Stream(format"OMETIFF", io, ""))
+end

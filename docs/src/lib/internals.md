@@ -50,4 +50,5 @@ OMETIFF.load_comments
 OMETIFF.load_master_xml
 OMETIFF.myendian
 OMETIFF.to_symbol
+OMETIFF.usingUUID
 ```
