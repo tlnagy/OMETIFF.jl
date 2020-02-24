@@ -15,6 +15,7 @@ include("utils.jl")
 include("files.jl")
 include("parsing.jl")
 include("mmap.jl")
+include("stream.jl")
 include("loader.jl")
 
 end # module
