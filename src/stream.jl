@@ -1,4 +1,5 @@
-const Streamable = Union{Base.ReshapedArray{T, N, <: ReadonlyTiffDiskArray}, ReadonlyTiffDiskArray} where {T, N}
+const ReshapedDiskArray = Base.ReshapedArray{T, N, <: ReadonlyTiffDiskArray} where {T, N}
+const Streamable = Union{ReshapedDiskArray, ReadonlyTiffDiskArray} where {T, N}
 
 """
     StreamingTiffDiskArray
@@ -37,7 +38,13 @@ Base.parent(arr::StreamingTiffDiskArray) = arr.data
 Base.size(arr::StreamingTiffDiskArray) = size(parent(arr))
 Base.getindex(arr::StreamingTiffDiskArray, i...) = getindex(parent(arr), i...)
 Base.setindex!(arr::StreamingTiffDiskArray, val, i...) = setindex!(parent(arr), val, i...)
-Base.setindex!(arr::StreamingTiffDiskArray, val, ax::Axis, i...) = setindex!(parent(arr), val, i...)
+Base.setindex!(arr::StreamingTiffDiskArray, val, ax::Axis, i...) = setindex!(parent(arr), val, ax, i...)
+
+ifds(arr::StreamingTiffDiskArray{T, N, <: ReshapedDiskArray, Ax}) where {T, N, Ax} =
+    parent(parent(parent(arr))).ifds
+
+ifds(arr::StreamingTiffDiskArray{T, N, <: ReadonlyTiffDiskArray, Ax}) where {T, N, Ax} =
+    parent(parent(arr)).ifds
 
 function Base.summary(io::IO, arr::StreamingTiffDiskArray)
     println(io, nameof(typeof(arr)), ", containing: ")
