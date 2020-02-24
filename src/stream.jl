@@ -35,7 +35,7 @@ end
 
 Base.parent(arr::StreamingTiffDiskArray) = arr.data
 Base.size(arr::StreamingTiffDiskArray) = size(parent(arr))
-Base.getindex(arr::StreamingTiffDiskArray, i...) = getindex(parent(arr), i)
+Base.getindex(arr::StreamingTiffDiskArray, i...) = getindex(parent(arr), i...)
 Base.setindex!(arr::StreamingTiffDiskArray, val, i...) = setindex!(parent(arr), val, i...)
 Base.setindex!(arr::StreamingTiffDiskArray, val, ax::Axis, i...) = setindex!(parent(arr), val, i...)
 
