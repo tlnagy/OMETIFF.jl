@@ -33,12 +33,13 @@ function update(arr::StreamingTiffDiskArray)
 
 end
 
-Base.size(arr::StreamingTiffDiskArray) = size(arr.data)
-Base.getindex(arr::StreamingTiffDiskArray, i...) = getindex(arr.data, i)
-Base.setindex!(arr::StreamingTiffDiskArray, val, i...) = setindex!(arr.data, val, i...)
-Base.setindex!(arr::StreamingTiffDiskArray, val, ax::Axis, i...) = setindex!(arr.data, val, i...)
+Base.parent(arr::StreamingTiffDiskArray) = arr.data
+Base.size(arr::StreamingTiffDiskArray) = size(parent(arr))
+Base.getindex(arr::StreamingTiffDiskArray, i...) = getindex(parent(arr), i)
+Base.setindex!(arr::StreamingTiffDiskArray, val, i...) = setindex!(parent(arr), val, i...)
+Base.setindex!(arr::StreamingTiffDiskArray, val, ax::Axis, i...) = setindex!(parent(arr), val, i...)
 
 function Base.summary(io::IO, arr::StreamingTiffDiskArray)
     println(io, nameof(typeof(arr)), ", containing: ")
-    summary(io, arr.data)
+    summary(io, parent(arr))
 end
