@@ -1,3 +1,5 @@
+using FileWatching: watch_file
+
 const ReshapedDiskArray = Base.ReshapedArray{T, N, <: ReadonlyTiffDiskArray} where {T, N}
 const Streamable = Union{ReshapedDiskArray, ReadonlyTiffDiskArray} where {T, N}
 
@@ -14,8 +16,13 @@ function to see how this is done.
 mutable struct StreamingTiffDiskArray{T, N, S, Ax} <: AbstractArray{T, N}
     data::AxisArray{T, N, S, Ax}
 
+    """Which filepaths we're tracking and the async thread for each"""
+    tracking::Dict{String, Task}
+
     function StreamingTiffDiskArray{T, N, Ax}(arr::AxisArray{T, N, <: Streamable, Ax}) where {T, N, Ax}
-        new{T, N, typeof(parent(arr)), Ax}(arr)
+        streamer = new{T, N, typeof(parent(arr)), Ax}(arr, Dict{String, Task}())
+        track(streamer)
+        streamer
     end
 end
 
@@ -27,11 +34,31 @@ function StreamingTiffDiskArray(arr::AxisArray)
     StreamingTiffDiskArray{eltype(arr), ndims(arr), axtype}(arr)
 end
 
+function track(arr::StreamingTiffDiskArray)
+    files = Set(ifd.file.filepath for ifd in values(ifds(arr)))
+    setdiff!(files, arr.tracking)
+
+    for filepath in files
+        @info "Tracking $(basename(filepath))"
+        arr.tracking[filepath] = @async while true
+            event = watch_file(filepath)
+            if event.changed
+                try
+                    update(arr)
+                catch
+                    @warn "Updating view of on-disk file failed. Changes might not be reflected."
+                    sleep(1)
+                end
+            end
+        end
+    end
+end
+
 """
     update(arr)
 """
 function update(arr::StreamingTiffDiskArray)
-
+    @info "Tracked file updated!"
 end
 
 Base.parent(arr::StreamingTiffDiskArray) = arr.data
