@@ -32,7 +32,7 @@ function get_ifds(omexml::EzXML.Node)
     end
     ifd_index = OrderedDict{Int, NTuple{4, Int}}()
     ifd_files = OrderedDict{Int, Tuple{String, String}}()
-    obs_filepaths = Set{String}()
+    obs_filepaths = Dict{String, Int}()
     for (idx, container) in enumerate(containers)
         OMETIFF.ifdindex!(ifd_index, ifd_files, obs_filepaths, container, dimlist[idx], faketiff(), idx)
     end
@@ -238,4 +238,16 @@ end
     # there are actually 274 IFDs in this OME-XML, not the expected 260 based on
     # the header, make sure the parser detects this correctly
     @test length(ifd_index) == 274
+end
+
+@testset "Issue 72" begin
+    filepath = joinpath("testdata", "issues", "issue72.ome.xml")
+    ifd_index, ifd_files, dimlist = get_ifds(root(readxml(filepath)))
+
+    # check this, because if additional files are detected and their offsets
+    # aren't updated properly than this will be wrong
+    @test ifd_index[1] == (1,1,1,1)
+
+    # this is the first IFD in the second file
+    @test ifd_index[2010] == (1, 3, 190, 3)
 end
