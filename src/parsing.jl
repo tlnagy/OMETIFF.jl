@@ -31,7 +31,7 @@ these IFDs are located in) inside the TIFF image.
   dimensions
 - `ifd_files::OrderedDict{Int, Tuple{String, String}}`: A mapping from IFD
   number to the filepath and UUID of the file it's located in
-- `obs_filepaths::Set{String}`: A list of observed filepaths
+- `obs_filepaths::Dict{String, Int}`: A list of observed filepaths mapped to the offset of their IFDs
 - `image::EzXML.Node`: The OMEXML rooted at the current position
 - `dims::NamedTuple`: Sizes of each dimension with the names as keys
 - `tifffile::TiffFile`: A pointer to the root file
@@ -42,7 +42,7 @@ The first two parameters should be then pumped through
 """
 function ifdindex!(ifd_index::OrderedDict{Int, NTuple{4, Int}},
                    ifd_files::OrderedDict{Int, Tuple{String, String}},
-                   obs_filepaths::Set{String},
+                   obs_filepaths::Dict{String, Int},
                    image::EzXML.Node,
                    dims::NamedTuple,
                    tifffile::TiffFile,
@@ -53,7 +53,7 @@ function ifdindex!(ifd_index::OrderedDict{Int, NTuple{4, Int}},
     ifd = 1
     # this is an offset value since multiple ifds can share the same index if
     # they are split across files, IFD1 (File1), IFD1 (File2), etc
-    file_ifd_offset = 1
+    prev_ifd = 0
     for tiffdata in tiffdatas
         try # if this tiffdata specifies the corresponding IFD
             ifd = parse(Int, tiffdata["IFD"]) + 1
@@ -79,11 +79,12 @@ function ifdindex!(ifd_index::OrderedDict{Int, NTuple{4, Int}},
             filepath = joinpath(dirname(tifffile.filepath), internal_filename)
 
             # if this file isn't one we've observed before, increment the offset
-            if !in(filepath, obs_filepaths)
-                ifd = file_ifd_offset
-                file_ifd_offset += 1
-                push!(obs_filepaths, filepath)
+            if !in(filepath, keys(obs_filepaths))
+                obs_filepaths[filepath] = prev_ifd
             end
+
+            ifd += obs_filepaths[filepath]
+
             ifd_files[ifd] = (uuid, filepath)
         end
 
@@ -112,6 +113,7 @@ function ifdindex!(ifd_index::OrderedDict{Int, NTuple{4, Int}},
             # all the indices that are not specified, we assume the first index
             ifd_index[ifd] = Tuple(pos > 0 ? pos : 1 for pos in indices)
         end
+        prev_ifd = ifd
     end
 end
 

@@ -65,7 +65,7 @@ function load(io::Stream{format"OMETIFF"}; dropunused=true, inmemory=true)
 
     ifd_indices = OrderedDict{Int, NTuple{4, Int}}()
     ifd_files = OrderedDict{Int, Tuple{String, String}}()
-    obs_filepaths = Set{String}()
+    obs_filepaths = Dict{String, Int}()
     for (idx, container) in enumerate(containers)
         OMETIFF.ifdindex!(ifd_indices, ifd_files, obs_filepaths, container, dimlist[idx], orig_file, idx)
     end
