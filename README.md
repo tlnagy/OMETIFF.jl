@@ -1,8 +1,8 @@
 # OMETIFF.jl
 
-| **Documentation**                 | **Build Status**                                              |
-|:----------------------------------|:--------------------------------------------------------------|
-| [![][docs-stable-img]][docs-stable-url] | [![][status-img]][status-url] [![][travis-img]][travis-url] [![][codecov-img]][codecov-url] |
+|**Stable Release**                                         | **Documentation**                 | **Build Status**                                              |
+|:---------------------------------------------------|:----------------------------------|:--------------------------------------------------------------|
+| ![](https://juliahub.com/docs/OMETIFF/version.svg) | [![][docs-stable-img]][docs-stable-url] | [![][status-img]][status-url] [![][travis-img]][travis-url] [![][codecov-img]][codecov-url] |
 
 Adds support for reading OME-TIFF files to the [Images.jl](https://github.com/JuliaImages/Images.jl)
 platform. Allows fast and easy interfacing with high-dimensional data with nice
