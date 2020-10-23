@@ -5,7 +5,7 @@ function load(f::File{format"OMETIFF"}; dropunused=true, inmemory=true)
 end
 
 """
-    load(io; dropunused, inmemory) -> ImageMetadata.ImageMeta
+    load(io; dropunused, inmemory, stream) -> ImageMetadata.ImageMeta
 
 Load an OMETIFF file using the stream `io`.
 
@@ -14,6 +14,8 @@ Load an OMETIFF file using the stream `io`.
   automatically (default) or not.
 - `inmemory::Bool`: controls whether arrays are fully loaded into memory
   (default) or left on disk and specific parts only loaded when accessed.
+- `stream::Bool`: whether to watch the file and load any changes (default
+  false), can only be used with out-of-memory files
 
 !!! tip
     The `inmemory=false` flag currently returns a read-only view of the data on
@@ -25,10 +27,12 @@ Load an OMETIFF file using the stream `io`.
     copy(arr)
     ```
 """
-function load(io::Stream{format"OMETIFF"}; dropunused=true, inmemory=true)
+function load(io::Stream{format"OMETIFF"}; dropunused=true, inmemory=true, stream=false)
     if io.filename != nothing && !occursin(".ome.tif", io.filename)
         throw(FileIO.LoaderError("OMETIFF", "Not an OME TIFF file!"))
     end
+
+    (inmemory && stream) && error("Cannot stream an in-memory file.")
 
     orig_file = TiffFile(io)
     summary = load_comments(orig_file)
