@@ -128,9 +128,8 @@ function get_unitful_axis(image::EzXML.Node, dimsize::Int, stepsize::String, uni
         # OME-XML stores the step size
         increment = parse(Float64, image[stepsize])
 
-        # This is an ugly hack to convert the unit string into Unitful.Unit till
-        # https://github.com/PainterQubits/Unitful.jl/issues/214 gets fixed
-        unittype = @eval @u_str $(image[units])
+        # parse units using Unitful
+        unittype = uparse(image[units])
 
         # Create a unitful range
         return 0*unittype:increment*unittype:increment*(dimsize-1)*unittype
@@ -225,7 +224,7 @@ function get_elapsed_times(containers::Vector{EzXML.Node}, master_dims::NamedTup
                 unitstr = plane["DeltaTUnit"]
             catch
             end
-            unittype = @eval @u_str $unitstr
+            unittype = uparse(unitstr)
             elapsed_times[didx...] = getattribute(plane, Float64, "DeltaT")*unittype
         end
     end
