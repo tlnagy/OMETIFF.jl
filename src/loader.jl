@@ -37,7 +37,7 @@ function load(io::Stream{format"OMETIFF"}; dropunused=true, inmemory=true)
     omexml = load_master_xml(orig_file)
 
     # find all images in this dataset, can either have the Image or Pixel tag
-    containers = findall("//*[@DimensionOrder]", omexml)
+    containers = findall("//*[@DimensionOrder]", omexml, ["ns" => namespace(omexml)])
 
     pos_names = nodecontent.(findall("/ns:OME/ns:Image/ns:StageLabel[@Name]/@Name", omexml, ["ns"=>namespace(omexml)]))
     # if all position names aren't unique then substitute names

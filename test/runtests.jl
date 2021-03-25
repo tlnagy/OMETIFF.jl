@@ -4,6 +4,7 @@ using FileIO
 using Unitful
 using AxisArrays
 using Test
+using ImageMetadata
 
 include("utils.jl")
 
@@ -88,7 +89,7 @@ end
                     tiffslice = open("testdata/singles/181003_slices/P$(pos)_T$(tp).tif") do s
                         FileIO.load(OMETIFF.getstream(format"TIFF", s))
                     end
-                    omeslice = img[Axis{:position}(pos), Axis{:time}(tp+1)].data
+                    omeslice = arraydata(img[Axis{:position}(pos), Axis{:time}(tp+1)])
                     # verify that ometiff slices are correctly indexed
                     @testset "Testing P$(pos)_T$(tp).tif" begin
                         @test all(omeslice .== tiffslice)
@@ -142,7 +143,7 @@ end
             FileIO.load(OMETIFF.getstream(format"TIFF", f))
         end
         # compare
-        @test all(ome.data .== tiff)
+        @test all(arraydata(ome) .== tiff)
     end
 end
 
