@@ -24,7 +24,7 @@ function get_ifds(fragment::String)
 end
 
 function get_ifds(omexml::EzXML.Node)
-    containers = findall("//*[@DimensionOrder]", omexml)
+    containers = findall("//*[@DimensionOrder]", omexml, ["ns" => namespace(omexml)])
     dimlist = []
     for container in containers
         dims, _ = OMETIFF.build_axes(container)
