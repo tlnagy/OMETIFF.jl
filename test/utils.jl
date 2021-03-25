@@ -13,5 +13,5 @@ function faketiff()
     write(io, OMETIFF.myendian())
     write(io, UInt16(42))
     write(io, UInt32(8))
-    OMETIFF.TiffFile(Stream(format"OMETIFF", io, ""))
+    OMETIFF.TiffFile(OMETIFF.getstream(io))
 end
