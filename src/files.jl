@@ -47,7 +47,7 @@ function TiffFile(uuid::String, filepath::String)
     end
 end
 
-TiffFile(io::IOStream) = TiffFile(Stream(format"OMETIFF", io, extract_filename(io)))
+TiffFile(io::IOStream) = TiffFile(getstream(io))
 
 """
     usingUUID(tf) -> Bool
@@ -182,7 +182,7 @@ function dump_omexml(filepath::String)
     end
     io = IOBuffer()
     open(filepath) do f
-        s = Stream(format"OMETIFF", f, OMETIFF.extract_filename(f))
+        s = getstream(f)
         orig_file = OMETIFF.TiffFile(s)
         omexml = OMETIFF.load_master_xml(orig_file)
         prettyprint(io, omexml)
