@@ -165,6 +165,10 @@ end
             @test all(img[1:10,1,1,1] .== img2[1:10,1,1,1])
             # file is read only and should throw an error if you try and modify it
             @test_throws ErrorException img[1:10,1,1,1] .= 1.0
+
+            # test reopening the file stream on access if closed
+            close(s)
+            @test img[10, 10, 2, 1] == img2[10, 10, 2, 1]
         end
     end
 end
