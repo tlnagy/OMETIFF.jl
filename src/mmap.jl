@@ -54,7 +54,7 @@ function Base.getindex(A::ReadonlyTiffDiskArray{Gray{T}, R, N1, N2}, i1::Int, i2
     # if the file isn't open, lets open a handle and update it
     if !isopen(ifd.file.io)
         path = ifd.file.filepath
-        ifd.file.io = getstream(open(path), path)
+        ifd.file.io = getstream(open(path))
     end
 
     n_strips = length(ifd.strip_offsets)
