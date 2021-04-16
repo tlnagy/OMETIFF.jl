@@ -7,7 +7,6 @@ using FileIO
 using JSON
 using ImageCore
 using ImageMetadata
-using ImageShow
 using DataStructures
 using DocStringExtensions
 
