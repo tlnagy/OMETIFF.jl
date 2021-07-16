@@ -21,10 +21,12 @@ end
 project_root = isfile("runtests.jl") ? abspath("..") : abspath(".")
 testdata_dir = joinpath(project_root, "exampletiffs", "ometiff_testdata")
 if !isdir(testdata_dir)
-    run(`git -C $project_root submodule init`)
-    run(`git -C $project_root submodule update --remote`)
+    run(`git -C $project_root clone https://github.com/tlnagy/exampletiffs.git exampletiffs --branch master --depth 1`)
 else
-    run(`git -C $project_root submodule update --remote`)
+    run(`git -C $testdata_dir fetch`)
+    # for reproducibility we should use hard reset
+    # run(`git -C $testdata_dir reset --hard origin/master`)
+    run(`git -C $testdata_dir pull`)
 end
 
 @testset "Axes Values" begin
