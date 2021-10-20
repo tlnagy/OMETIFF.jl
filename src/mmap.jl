@@ -1,5 +1,5 @@
 """
-    ReadonlyTiffDiskArray(mappedtype, rawtype, ifds, dims) -> ReadonlyTiffDiskArray
+    $SIGNATURES
 
 A lazy representation of a OMETIFF file. This custom type is needed since TIFF
 files are laid out noncontiguously and nonregularly. It uses an internal index
@@ -11,11 +11,11 @@ higher cost of accessing an element.
 
 $(FIELDS)
 """
-mutable struct ReadonlyTiffDiskArray{T <: Gray, R, N1, N2} <: AbstractArray{T, N2}
+mutable struct DiskOMETaggedImage{T, N1, N2, O, AA <: AbstractArray} <: AbstractDenseTIFF{T, N2}
     """
-    A map of dimensions (sans XY) to the corresponding [`IFD`](@ref)
+    A map of dimensions (sans XY) to the corresponding [`TiffFile`](@ref) and [`IFD`](@ref)
     """
-    ifds::OrderedDict{NTuple{N1, Int}, IFD}
+    ifds::OrderedDict{NTuple{N1, Int}, Tuple{TiffFile{O}, IFD{O}}}
 
     """
     The full set of dimensions of the TIFF file, including XY
@@ -25,58 +25,48 @@ mutable struct ReadonlyTiffDiskArray{T <: Gray, R, N1, N2} <: AbstractArray{T, N
     """
     An internal cache to fill when reading from disk
     """
-    cache::Array{R, 2}
+    cache::AA
 
     """
     The dimension indices corresponding to the slice currently in the cache
     """
     cache_index::NTuple{N1, Int}
 
-    function ReadonlyTiffDiskArray(::Type{T}, ::Type{R}, ifds::OrderedDict{NTuple{N1, Int}, IFD}, dims::NTuple{N2, Int}) where {T, R, N1, N2}
+    function DiskOMETaggedImage(ifds::OrderedDict{NTuple{N1, Int}, Tuple{TiffFile{O}, IFD{O}}}, dims::NTuple{N2, Int}) where {N1, O, N2}
         if N2 - 2 != N1
             error("$N2 dimensions given, but the IFDs are indexed on $N1 dimensions instead of "*
                   "expected $(N2-2).")
         end
-        new{T, R, N1, N2}(ifds, dims, Array{R}(undef, dims[1], dims[2]), (-1, -1, -1, -1))
+        ifd = first(values(ifds))[2]
+        cache = getcache(ifd)
+        new{eltype(cache), N1, N2, O, typeof(cache)}(ifds, dims, cache, (-1, -1, -1, -1))
     end
 end
 
-Base.size(A::ReadonlyTiffDiskArray) = A.dims
+Base.size(A::DiskOMETaggedImage) = A.dims
 
-function Base.getindex(A::ReadonlyTiffDiskArray{Gray{T}, R, N1, N2}, i1::Int, i2::Int, i::Vararg{Int, N1}) where {T, R, N1, N2}
+function Base.getindex(A::DiskOMETaggedImage{T, N1, N2, O, AA}, i1::Int, i2::Int, i::Vararg{Int, N1}) where {T, N1, N2, O, AA}
     # check the loaded cache is already the correct slice
     if A.cache_index == i
-        return Gray(reinterpret(T, A.cache[i2, i1]))
+        return A.cache[i2, i1]
     end
 
-    ifd = A.ifds[i]
+    file, ifd = A.ifds[i]
 
     # if the file isn't open, lets open a handle and update it
-    if !isopen(ifd.file.io)
-        path = ifd.file.filepath
-        ifd.file.io = getstream(open(path))
+    if !isopen(file.io)
+        path = file.filepath
+        file.io = getstream(format"OMETIFF", open(path), path)
     end
 
-    n_strips = length(ifd.strip_offsets)
-    strip_len = floor(Int, (size(A.cache, 1) * size(A.cache, 2)) / n_strips)
-
-    # if the data is striped then we need to change the buffer shape so that we
-    # can read into it. This should be replaced with a view of cache in Julia
-    # >1.4, see https://github.com/JuliaLang/julia/pull/33046
-    if n_strips > 1 && size(tmp) != (strip_len, )
-        tmp = Array{R}(undef, strip_len)
-    else
-        tmp = A.cache
-    end
-
-    _read_ifd_data!(ifd, A.cache, tmp)
+    read!(A.cache, file, ifd)
 
     A.cache_index = i
 
-    return Gray(reinterpret(T, A.cache[i2, i1]))
+    return A.cache[i2, i1]
 end
 
-function Base.setindex!(A::ReadonlyTiffDiskArray{Gray{T}, R, N1, N2}, X, I...) where {T, R, N1, N2}
+function Base.setindex!(A::T, X, I...) where {T <: DiskOMETaggedImage}
     error("This array is on disk and is read only. Convert to a mutable in-memory version by running "*
           "`copy(arr)`. \n\n𝗡𝗼𝘁𝗲: For large files this can be quite expensive. A future PR will add "*
           "support for reading and writing to/from disk.")

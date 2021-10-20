@@ -41,7 +41,7 @@ The first two parameters should be then pumped through
 [`OMETIFF.get_ifds`](@ref)
 """
 function ifdindex!(ifd_index::OrderedDict{Int, NTuple{4, Int}},
-                   ifd_files::OrderedDict{Int, Tuple{String, String}},
+                   ifd_files::OrderedDict{Int, Tuple{UUID, String}},
                    obs_filepaths::Dict{String, Int},
                    image::EzXML.Node,
                    dims::NamedTuple,
@@ -65,17 +65,7 @@ function ifdindex!(ifd_index::OrderedDict{Int, NTuple{4, Int}},
         if uuid_node != nothing
             internal_filename = uuid_node["FileName"]
 
-            # if the root file has a UUID then lets keep track of TiffData
-            # locations using the UUIDs, otherwise lets using the internal filenames
-            if usingUUID(tifffile)
-                uuid = nodecontent(uuid_node)
-            else
-                # this is annoying but MicroManager doesn't appear to be
-                # consistent with embedding the file extension between
-                # Image@Name and TiffData/UUID@FileName so lets strip the
-                # extension here
-                uuid = reduce(replace, [".ome.tif" => "", "ome.tiff" => ""], init=internal_filename)
-            end
+            uuid = nodecontent(uuid_node)
             filepath = joinpath(dirname(tifffile.filepath), internal_filename)
 
             # if this file isn't one we've observed before, increment the offset
@@ -85,7 +75,7 @@ function ifdindex!(ifd_index::OrderedDict{Int, NTuple{4, Int}},
 
             ifd += obs_filepaths[filepath]
 
-            ifd_files[ifd] = (uuid, filepath)
+            ifd_files[ifd] = (make_uuid(uuid), filepath)
         end
 
         # get Z, C, T indices (in order specified by `dims`)

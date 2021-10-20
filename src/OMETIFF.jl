@@ -1,14 +1,18 @@
 module OMETIFF
 
-using Unitful
 using AxisArrays
-using EzXML
-using FileIO
-using JSON
-using ImageCore
-using ImageMetadata
 using DataStructures
 using DocStringExtensions
+using EzXML
+using FileIO
+using ImageMetadata
+using JSON
+using ProgressMeter
+using TiffImages
+using TiffImages: AbstractDenseTIFF, TiffFile, Iterable, IFD, 
+                  IMAGEDESCRIPTION, Palette, load!, load, getcache, getstream
+using Unitful
+using UUIDs
 
 include("utils.jl")
 include("files.jl")

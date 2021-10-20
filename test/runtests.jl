@@ -5,6 +5,9 @@ using Unitful
 using AxisArrays
 using Test
 using ImageMetadata
+using TiffImages
+using TiffImages: TiffFile, getstream
+using UUIDs
 
 include("utils.jl")
 
@@ -31,7 +34,7 @@ end
 
 @testset "Axes Values" begin
     open(joinpath(testdata_dir, "singles/181003_multi_pos_time_course_1_MMStack.ome.tif")) do f
-        s = OMETIFF.getstream(f)
+        s = getstream(format"OMETIFF", f)
         img = OMETIFF.load(s)
         # check that the first three axes are length, length, time
         @test all(dimension.(first.(axisvalues(img)[1:3])) .== (u"𝐋", u"𝐋", u"𝐓"))
@@ -43,14 +46,14 @@ end
 @testset "Single file OME-TIFFs" begin
     @testset "Single Channel OME-TIFF" begin
         open(joinpath(testdata_dir, "singles/single-channel.ome.tif")) do f
-            s = OMETIFF.getstream(f)
+            s = getstream(format"OMETIFF", f)
             img = OMETIFF.load(s)
             @test size(img) == (167, 439)
         end
     end
     @testset "Multi Channel OME-TIFF" begin
         open(joinpath(testdata_dir, "singles/multi-channel.ome.tif")) do f
-            s = OMETIFF.getstream(f)
+            s = getstream(format"OMETIFF", f)
             img = OMETIFF.load(s)
             @test size(img) == (167, 439, 3)
             # check channel indexing
@@ -59,7 +62,7 @@ end
     end
     @testset "Multi Channel Time Series OME-TIFF" begin
         open(joinpath(testdata_dir, "singles/multi-channel-time-series.ome.tif")) do f
-            s = OMETIFF.getstream(f)
+            s = getstream(format"OMETIFF", f)
             img = OMETIFF.load(s)
             @test size(img) == (167, 439, 3, 7)
             # check channel indexing
@@ -70,7 +73,7 @@ end
     end
     @testset "Multi Channel Z Series OME-TIFF" begin
         open(joinpath(testdata_dir, "singles/multi-channel-z-series.ome.tif")) do f
-            s = OMETIFF.getstream(f)
+            s = getstream(format"OMETIFF", f)
             img = OMETIFF.load(s)
             @test size(img) == (167, 439, 5, 3)
             # check channel indexing
@@ -81,7 +84,7 @@ end
     end
     @testset "Multi position OME-TIFF" begin
         open(joinpath(testdata_dir, "singles/background_1_MMStack.ome.tif")) do f
-            s = OMETIFF.getstream(f)
+            s = getstream(format"OMETIFF", f)
             img = OMETIFF.load(s)
             @test size(img) == (1024, 1024, 9)
             # check position indexing
@@ -93,14 +96,14 @@ end
     # see https://github.com/tlnagy/OMETIFF.jl/issues/19
     @testset "Intercalated IFDs, issue #19" begin
         open(joinpath(testdata_dir, "singles/181003_multi_pos_time_course_1_MMStack.ome.tif")) do f
-            s = OMETIFF.getstream(f)
+            s = getstream(format"OMETIFF", f)
             img = OMETIFF.load(s)
             # verify against slices made in Fiji
             for pos in [1, 2]
                 for tp in 0:9
                     # load Fiji-made slices
                     tiffslice = open(joinpath(testdata_dir, "singles/181003_slices/P$(pos)_T$(tp).tif")) do s
-                        FileIO.load(OMETIFF.getstream(format"TIFF", s))
+                        FileIO.load(getstream(format"TIFF", s))
                     end
                     omeslice = arraydata(img[Axis{:position}(pos), Axis{:time}(tp+1)])
                     # verify that ometiff slices are correctly indexed
@@ -117,7 +120,7 @@ end
         # load the master file that contains the full OME-XML
         @testset "Load master file)" begin
             open(joinpath(testdata_dir, "multiples/master/multifile-Z1.ome.tiff")) do f
-                s = OMETIFF.getstream(f)
+                s = getstream(format"OMETIFF", f)
                 img = OMETIFF.load(s)
                 @test size(img) == (24, 18, 5)
             end
@@ -125,7 +128,7 @@ end
         # load the secondary file that only has a pointer to the full OME-XML
         @testset "Load secondary file" begin
             open(joinpath(testdata_dir, "multiples/master/multifile-Z2.ome.tiff")) do f
-                s = OMETIFF.getstream(f)
+                s = getstream(format"OMETIFF", f)
                 img = OMETIFF.load(s)
                 @test size(img) == (24, 18, 5)
             end
@@ -133,7 +136,7 @@ end
     end
     @testset "Multi file Z stack with OME companion file" begin
         open(joinpath(testdata_dir, "multiples/companion/multifile-Z1.ome.tiff")) do f
-            s = OMETIFF.getstream(f)
+            s = getstream(format"OMETIFF", f)
             img = OMETIFF.load(s)
             @test size(img) == (24, 18, 5)
         end
@@ -143,17 +146,17 @@ end
 @testset "TIFF value verifications" begin
     files = [
         joinpath(testdata_dir, "singles/170918_tn_neutrophil_migration_wave.ome.tif"),
-        joinpath(testdata_dir, "singles/single-channel.ome.tif"),
+        # joinpath(testdata_dir, "singles/single-channel.ome.tif"),
         joinpath(testdata_dir, "singles/background_1_MMStack.ome.tif")
     ]
     for filepath in files
         # open file using OMETIFF.jl
         ome = open(filepath) do f
-            OMETIFF.load(OMETIFF.getstream(f))
+            OMETIFF.load(getstream(format"OMETIFF", f))
         end
         # open file using standard TIFF parser
         tiff = open(filepath) do f
-            FileIO.load(OMETIFF.getstream(format"TIFF", f))
+            FileIO.load(getstream(format"TIFF", f))
         end
         # compare
         @test all(arraydata(ome) .== tiff)
@@ -164,14 +167,14 @@ end
     # verify that disabling dropping unused dimensions works as expected
     @testset "Drop unused dimensions" begin
         open(joinpath(testdata_dir, "multiples", "companion", "multifile-Z1.ome.tiff")) do f
-            s = OMETIFF.getstream(f)
+            s = getstream(format"OMETIFF", f)
             img = OMETIFF.load(s, dropunused=false)
             @test size(img) == (24, 18, 1, 1, 5, 1)
         end
     end
     @testset "Memory mapping" begin
         open(joinpath(testdata_dir, "singles", "181003_multi_pos_time_course_1_MMStack.ome.tif")) do f
-            s = OMETIFF.getstream(f)
+            s = getstream(format"OMETIFF", f)
             img = OMETIFF.load(s, inmemory=false)
             img2 = OMETIFF.load(s)
             @test size(img) == (256, 256, 10, 2)
@@ -202,14 +205,14 @@ end
 @testset "Renaming files" begin
     @testset "Tracking via UUID" begin
         open(joinpath(testdata_dir, "singles", "renamed_test", "renamed_uuids.ome.tif")) do f
-            s = OMETIFF.getstream(f)
+            s = getstream(format"OMETIFF", f)
             img = OMETIFF.load(s)
             @test size(img) == (167, 439, 5, 7)
         end
     end
     @testset "Tracking via internal filenames" begin
         open(joinpath(testdata_dir, "singles", "renamed_test", "renamed_internalfilenames.ome.tif")) do f
-            s = OMETIFF.getstream(f)
+            s = getstream(format"OMETIFF", f)
             img = OMETIFF.load(s)
             @test size(img) == (256, 256, 10, 2)
         end
@@ -219,7 +222,7 @@ end
 @testset "Issues" begin
     @testset "Issue #60" begin
         open(joinpath(testdata_dir, "singles", "nonstriped_rect", "MMStack_Pos0.ome.tif")) do f
-            s = OMETIFF.getstream(f)
+            s = getstream(format"OMETIFF", f)
             img = OMETIFF.load(s)
             @test size(img) == (2160, 2560, 8)
         end

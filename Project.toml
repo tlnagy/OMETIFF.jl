@@ -1,7 +1,7 @@
 name = "OMETIFF"
 uuid = "2d0ec36b-e807-5756-994b-45af29551fcf"
 authors = ["Tamas Nagy <tamas@tamasnagy.com>"]
-version = "0.3.14"
+version = "0.4.0"
 
 [deps]
 AxisArrays = "39de3d68-74b9-583c-8d2d-e117c070f3a9"
@@ -9,20 +9,22 @@ DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
 DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
 EzXML = "8f5d6c58-4d21-5cfd-889c-e3ad7ee6a615"
 FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
-ImageCore = "a09fc81d-aa75-5fe9-8630-4744c3626534"
 ImageMetadata = "bc367c6b-8a6b-528e-b4bd-a4b897500b49"
 JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
+ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
+TiffImages = "731e570b-9d59-4bfa-96dc-6df516fadf69"
+UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [compat]
-AxisArrays = "0.3, 0.4"
+AxisArrays = "0.4"
 DataStructures = "0.17, 0.18"
 DocStringExtensions = "0.8"
 EzXML = "1"
 FileIO = "1"
-ImageCore = "0.8.1, 0.9"
-ImageMetadata = "0.7, 0.8, 0.9"
+ImageMetadata = "0.9"
 JSON = "0.21"
+TiffImages = "0.5"
 Unitful = "1"
 julia = "1"
 
