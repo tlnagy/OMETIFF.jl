@@ -59,8 +59,8 @@ function get_ifds(orig_file::TiffFile{O},
     for (fileid, file) in files
         # load all IFDs in this file
         rawifds = collect(file)
-        load!(file, rawifds)
-        
+        foreach(ifd -> load!(file, ifd), rawifds)
+
         # there is a global IFD index across all files and also a per-file
         # index, e.g. if each IFD is in a separate file than an IFD can have an
         # index of 5 globally yet have an index of 1 in the 5th file.
