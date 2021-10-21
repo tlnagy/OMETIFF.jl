@@ -14,7 +14,6 @@ OMETIFF.dump_omexml
 ```@docs
 OMETIFF.IFD
 OMETIFF.TiffFile
-OMETIFF.ReadonlyTiffDiskArray
 ```
 
 ## Logic
@@ -26,7 +25,6 @@ should be handle in these functions.
 ```@docs
 OMETIFF.ifdindex!
 OMETIFF.get_ifds
-OMETIFF.read_ifd
 OMETIFF.build_axes
 ```
 
@@ -41,14 +39,9 @@ OMETIFF.inmemoryarray
 
 ```@docs
 Base.iterate
-OMETIFF.check_bswap
-OMETIFF.do_bswap
-OMETIFF.extract_filename
 OMETIFF.get_elapsed_times
 OMETIFF.get_unitful_axis
 OMETIFF.load_comments
 OMETIFF.load_master_xml
-OMETIFF.myendian
 OMETIFF.to_symbol
-OMETIFF.usingUUID
 ```

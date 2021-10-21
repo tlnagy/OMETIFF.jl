@@ -9,9 +9,7 @@ wrap(content) = """
 </OME>"""
 
 function faketiff()
-    io = IOBuffer()
-    write(io, OMETIFF.myendian())
-    write(io, UInt16(42))
-    write(io, UInt32(8))
-    OMETIFF.TiffFile(OMETIFF.getstream(io))
+    tf = TiffFile{UInt32}()
+    write(tf)
+    read(tf.io, TiffFile)
 end
