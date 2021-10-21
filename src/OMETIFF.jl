@@ -8,9 +8,8 @@ using FileIO
 using ImageMetadata
 using JSON
 using ProgressMeter
-using TiffImages
 using TiffImages: AbstractDenseTIFF, TiffFile, Iterable, IFD, 
-                  IMAGEDESCRIPTION, load!, load, getcache, getstream, fixcolors
+                  IMAGEDESCRIPTION, load!, getcache, getstream, fixcolors
 using Unitful
 using UUIDs
 
