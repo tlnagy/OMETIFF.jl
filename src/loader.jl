@@ -1,4 +1,4 @@
-function TiffImages.load(f::File{format"OMETIFF"}; dropunused=true, inmemory=true)
+function load(f::File{format"OMETIFF"}; dropunused=true, inmemory=true)
     open(f) do s
         ret = load(s; dropunused=dropunused, inmemory=inmemory)
     end
@@ -26,7 +26,7 @@ Load an OMETIFF file using the stream `io`.
     copy(arr)
     ```
 """
-function TiffImages.load(io::Stream{format"OMETIFF"}; dropunused=true, verbose = true, inmemory=true)
+function load(io::Stream{format"OMETIFF"}; dropunused=true, verbose = true, inmemory=true)
     if io.filename !== nothing && !occursin(".ome.tif", io.filename)
         throw(FileIO.LoaderError("OMETIFF", "Not an OME TIFF file!", ErrorException("")))
     end

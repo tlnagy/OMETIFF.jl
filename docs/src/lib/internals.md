@@ -12,6 +12,7 @@ OMETIFF.dump_omexml
 ## Types
 
 ```@docs
+OMETIFF.DiskOMETaggedImage
 OMETIFF.IFD
 OMETIFF.TiffFile
 ```
