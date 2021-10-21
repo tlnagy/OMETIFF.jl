@@ -10,7 +10,7 @@ using JSON
 using ProgressMeter
 using TiffImages
 using TiffImages: AbstractDenseTIFF, TiffFile, Iterable, IFD, 
-                  IMAGEDESCRIPTION, Palette, load!, load, getcache, getstream
+                  IMAGEDESCRIPTION, load!, load, getcache, getstream, fixcolors
 using Unitful
 using UUIDs
 

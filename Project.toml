@@ -24,7 +24,7 @@ EzXML = "1"
 FileIO = "1"
 ImageMetadata = "0.9"
 JSON = "0.21"
-TiffImages = "0.5"
+TiffImages = "^0.5.1"
 Unitful = "1"
 julia = "1"
 

@@ -96,19 +96,7 @@ function TiffImages.load(io::Stream{format"OMETIFF"}; dropunused=true, verbose =
         loaded = DiskOMETaggedImage(ifds, values(master_dims));
     end
 
-    if eltype(loaded) <: Palette
-        ifd = first(values(ifds))[2]
-        raw = rawtype(ifd)
-        loadedr = reinterpret(raw, loaded)
-        maxdepth = 2^(Int(ifd[BITSPERSAMPLE].data))-1
-        colors = ifd[COLORMAP].data
-        color_map = vec(reinterpret(RGB{N0f16}, reshape(colors, :, 3)'))
-        data = IndirectArray(loadedr, OffsetArray(color_map, 0:maxdepth))
-    elseif eltype(loaded) <: Bool
-        data = Gray.(loaded)
-    else
-        data = loaded
-    end
+    data = fixcolors(loaded, first(values(ifds))[2])
 
     # find dimensions of length 1 and remove them
     if dropunused
