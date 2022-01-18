@@ -53,7 +53,7 @@ function ifdindex!(ifd_index::OrderedDict{Int, NTuple{4, Int}},
     ifd = 1
     # this is an offset value since multiple ifds can share the same index if
     # they are split across files, IFD1 (File1), IFD1 (File2), etc
-    prev_ifd = 0
+    prev_ifd = length(obs_filepaths)
     for tiffdata in tiffdatas
         try # if this tiffdata specifies the corresponding IFD
             ifd = parse(Int, tiffdata["IFD"]) + 1
