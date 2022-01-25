@@ -141,6 +141,30 @@ end
             @test size(img) == (24, 18, 5)
         end
     end
+    @testset "Multi file T stack with multiple OME image nodes" begin
+        # 3 images, each embedded in one OME image node, each with XYCT = (512, 512, 2, 4)
+        # load master file that contains the full OME-XML
+        @testset "Load master file" begin
+            open(abspath(joinpath(testdata_dir, "multiples/multi_image_node/TSeries-camp-005_Cycle00001_Ch1_000001.ome.tif"))) do f
+                s = getstream(format"OMETIFF", f)
+                img = OMETIFF.load(s)
+                @test size(img) == (128, 128, 2, 4, 3)
+                # check channel indexing
+                @test size(img[Axis{:channel}(:Ch1)]) == (128, 128, 4, 3)
+                # check time indexing
+                @test size(img[Axis{:time}(1)]) == (128, 128, 2, 3)
+                # check image indexing
+                @test size(img[Axis{:position}(:Pos1)]) == (128, 128,  2, 4)
+            end
+        end
+        @testset "Load secondary file" begin
+            open(abspath(joinpath(testdata_dir, "multiples/multi_image_node/TSeries-camp-005_Cycle00002_Ch1_000001.ome.tif"))) do f
+                s = getstream(format"OMETIFF", f)
+                img = OMETIFF.load(s)
+                @test size(img) == (128, 128, 2, 4, 3)
+            end
+        end
+    end
 end
 # let's make sure that the values we return are identical to normal TIFF readers
 @testset "TIFF value verifications" begin
