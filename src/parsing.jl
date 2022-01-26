@@ -51,9 +51,11 @@ function ifdindex!(ifd_index::OrderedDict{Int, NTuple{4, Int}},
     tiffdatas = findall(".//ns:TiffData", image, ["ns"=>namespace(image)])
 
     ifd = 1
-    # this is an offset value since multiple ifds can share the same index if
-    # they are split across files, IFD1 (File1), IFD1 (File2), etc
-    prev_ifd = 0
+    # to avoid overwriting previous IFD indices from other images, we make sure
+    # to start counting from the maximum previously observed IFD index. 
+    #
+    # TODO: This assumes a dense numbering of the indices, is this always true?
+    prev_ifd = length(ifd_index) > 0 ? maximum(keys(ifd_index)) : 0
     for tiffdata in tiffdatas
         try # if this tiffdata specifies the corresponding IFD
             ifd = parse(Int, tiffdata["IFD"]) + 1
