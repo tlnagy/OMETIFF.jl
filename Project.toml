@@ -1,7 +1,7 @@
 name = "OMETIFF"
 uuid = "2d0ec36b-e807-5756-994b-45af29551fcf"
 authors = ["Tamas Nagy <tamas@tamasnagy.com>"]
-version = "0.4.1"
+version = "0.4.2"
 
 [deps]
 AxisArrays = "39de3d68-74b9-583c-8d2d-e117c070f3a9"
@@ -25,7 +25,7 @@ FileIO = "1"
 ImageMetadata = "0.9"
 JSON = "0.21"
 ProgressMeter = "1"
-TiffImages = "^0.5.1"
+TiffImages = "^0.5.1, 0.6"
 Unitful = "1"
 julia = "1"
 
