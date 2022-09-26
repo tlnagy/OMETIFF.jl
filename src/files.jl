@@ -94,6 +94,9 @@ function loadxml(file::TiffFile)
         catch
         end
     end
+    if xml === nothing # if the xml failed to parse or is missing throw an error
+        throw(ErrorException("XML missing or corrupted, aborting"))
+    end
     root(xml)
 end
 

@@ -241,6 +241,14 @@ end
             @test size(img) == (256, 256, 10, 2)
         end
     end
+    @testset "No .ome.tif ending, Issue #99" begin
+        f = joinpath(testdata_dir, "singles", "single-channel.ome.tif")
+        # change the file ending of an OMETIFF
+        newf = cp(f, splitext(splitext(f)[1])[1] * ".tif", force = true)
+
+        img = FileIO.load(Stream{format"OMETIFF"}(open(newf), newf))
+        @test axisnames(img) == (:y, :x)
+    end
 end
 
 @testset "Issues" begin
