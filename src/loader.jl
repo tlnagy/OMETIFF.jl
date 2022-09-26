@@ -27,10 +27,6 @@ Load an OMETIFF file using the stream `io`.
     ```
 """
 function load(io::Stream{format"OMETIFF"}; dropunused=true, verbose = true, inmemory=true)
-    if io.filename !== nothing && !occursin(".ome.tif", io.filename)
-        throw(FileIO.LoaderError("OMETIFF", "Not an OME TIFF file!", ErrorException("")))
-    end
-
     orig_file = read(io, TiffFile)
     summary = load_comments(orig_file)
 
