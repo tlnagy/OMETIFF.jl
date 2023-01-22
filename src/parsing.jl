@@ -56,6 +56,7 @@ function ifdindex!(ifd_index::OrderedDict{Int, NTuple{4, Int}},
     #
     # TODO: This assumes a dense numbering of the indices, is this always true?
     prev_ifd = length(ifd_index) > 0 ? maximum(keys(ifd_index)) : 0
+    prev_filepath = ""
     for tiffdata in tiffdatas
         try # if this tiffdata specifies the corresponding IFD
             ifd = parse(Int, tiffdata["IFD"]) + 1
@@ -73,7 +74,21 @@ function ifdindex!(ifd_index::OrderedDict{Int, NTuple{4, Int}},
             # if this file isn't one we've observed before, increment the offset
             if !in(filepath, keys(obs_filepaths))
                 obs_filepaths[filepath] = prev_ifd
+            # if this isn't the first file and we're switching files and we've
+            # found an even bigger prev_ifd in the earlier file then
+            # bump the offset, see https://github.com/tlnagy/OMETIFF.jl/issues/104
+            elseif prev_filepath != "" && prev_filepath != filepath && obs_filepaths[filepath] < prev_ifd
+                old_offset = obs_filepaths[filepath]
+                δ = prev_ifd - old_offset
+                # update the offset associated with this file to this new larger value
+                obs_filepaths[filepath] = prev_ifd
+
+                # shift all the previously detected IFDs by δ 
+                shift!(ifd_files, δ, prev_ifd+1)
+                shift!(ifd_index, δ, prev_ifd+1)
             end
+
+            prev_filepath = filepath
 
             ifd += obs_filepaths[filepath]
 

@@ -251,3 +251,15 @@ end
     # this is the first IFD in the second file
     @test ifd_index[2010] == (1, 3, 190, 3)
 end
+
+@testset "Issue 104" begin
+    filepath = joinpath("testdata", "issues", "issue104.ome.xml")
+    ifd_index, ifd_files, dimlist = get_ifds(root(readxml(filepath)))
+
+    # if this clobbering happens, then the last IFDs in the first file get
+    # overwritten by the first IFDs in the second file so this index will be
+    # missing: 
+    @test ifd_index[2026] == (1, 1, 338, 2)
+    # if any clobbering happens then we won't have enough IFDs
+    @test length(ifd_index) == 2166 
+end
