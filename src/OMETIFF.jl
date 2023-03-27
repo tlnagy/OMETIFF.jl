@@ -18,5 +18,6 @@ include("files.jl")
 include("parsing.jl")
 include("mmap.jl")
 include("loader.jl")
+include("omexml.jl")
 
 end # module
